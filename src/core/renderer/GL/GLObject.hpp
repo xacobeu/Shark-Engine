@@ -86,7 +86,7 @@ namespace GL {
         
         static void Attrib(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, std::size_t offset) {
             glEnableVertexAttribArray(index);
-            glVertexAttribPointer(index, size, type, normalized, stride, (void*)offset);
+            glVertexAttribPointer(index, size, type, normalized, stride, reinterpret_cast<void*>(offset));
         }
     };
 

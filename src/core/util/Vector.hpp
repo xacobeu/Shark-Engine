@@ -71,13 +71,11 @@ Vec<N,T> normalize(const Vec<N,T>& v) {
 
 template<typename T>
 struct Vec<2, T> {
-    union {
-        struct { T x, y; };
-        std::array<T, 2> v;
-    };
+    T x{};
+    T y{};
 
-    T& operator[](std::size_t i)             { return v[i]; }
-    const T& operator[](std::size_t i) const { return v[i]; }
+    T& operator[](std::size_t i)             { return (i == 0) ? x : y; }
+    const T& operator[](std::size_t i) const { return (i == 0) ? x : y; }
 
     Vec operator+(const Vec& r) const { return {x + r.x, y + r.y}; }
     Vec operator-(const Vec& r) const { return {x - r.x, y - r.y}; }
@@ -90,10 +88,9 @@ struct Vec<2, T> {
 
 template<typename T>
 struct Vec<3, T> {
-    union {
-        struct { T x, y, z; };
-        std::array<T, 3> v;
-    };
+    T x{};
+    T y{};
+    T z{};
 
     // Direction constants
     static const Vec up()       { return { 0,  1,  0}; }
@@ -103,8 +100,8 @@ struct Vec<3, T> {
     static const Vec forward()  { return { 0,  0,  1}; }
     static const Vec back()     { return { 0,  0, -1}; }
 
-    T& operator[](std::size_t i)             { return v[i]; }
-    const T& operator[](std::size_t i) const { return v[i]; }
+    T& operator[](std::size_t i)             { return (i == 0) ? x : (i == 1) ? y : z; }
+    const T& operator[](std::size_t i) const { return (i == 0) ? x : (i == 1) ? y : z; }
 
     Vec operator+(const Vec& r) const { return {x + r.x, y + r.y, z + r.z}; }
     Vec operator-(const Vec& r) const { return {x - r.x, y - r.y, z - r.z}; }
@@ -126,13 +123,13 @@ Vec<3,T> cross(const Vec<3,T>& a, const Vec<3,T>& b) {
 
 template<typename T>
 struct Vec<4, T> {
-    union {
-        struct { T x, y, z, w; };
-        std::array<T, 4> v;
-    };
+    T x{};
+    T y{};
+    T z{};
+    T w{};
 
-    T& operator[](std::size_t i)             { return v[i]; }
-    const T& operator[](std::size_t i) const { return v[i]; }
+    T& operator[](std::size_t i)             { return (i == 0) ? x : (i == 1) ? y : (i == 2) ? z : w; }
+    const T& operator[](std::size_t i) const { return (i == 0) ? x : (i == 1) ? y : (i == 2) ? z : w; }
 
     Vec operator+(const Vec& r) const { return {x+r.x, y+r.y, z+r.z, w+r.w}; }
     Vec operator-(const Vec& r) const { return {x-r.x, y-r.y, z-r.z, w-r.w}; }
