@@ -1,9 +1,15 @@
 # Build directories
 build/
+build-web/
+.deps/
 
 # IDE Stuff
 .vscode/
 CMakeUserPresets.json
+.clang-format
+.clangd
+.cache
+compile_commands.json
 
 # Vcpkg
 vcpkg_installed/

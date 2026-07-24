@@ -1,6 +1,10 @@
 #include <SharkEngine/Window.hpp>
 
-#include <glad/glad.h>
+#ifdef SHARK_NO_GLAD
+	#include <GLES3/gl3.h>
+#else
+	#include <glad/glad.h>
+#endif
 #include <GLFW/glfw3.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -28,13 +32,17 @@ Window::Window(int width, int height, const char* title) {
 
     glfwMakeContextCurrent(window);
 
+#ifndef __EMSCRIPTEN__
     // Load OpenGL.
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         printf("Failed to initialize GLAD\n");
         return;
     }
+#endif
 
+#ifndef __EMSCRIPTEN__
     glfwSwapInterval(1);
+#endif
     glfwSetWindowUserPointer(window, this);
 
     glfwSetKeyCallback(window, _keyCallback);
@@ -68,7 +76,11 @@ void Window::initImGui() {
     ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForOpenGL(window, false);
+#ifdef __EMSCRIPTEN__
+    ImGui_ImplOpenGL3_Init("#version 300 es");
+#else
     ImGui_ImplOpenGL3_Init("#version 450");
+#endif
 }
 
 void Window::beginImGuiFrame() {

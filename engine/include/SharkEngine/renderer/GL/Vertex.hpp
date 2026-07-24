@@ -1,7 +1,11 @@
 #pragma once
 
 #include <array>
-#include <glad/glad.h>
+#ifdef SHARK_NO_GLAD
+	#include <GLES3/gl3.h>
+#else
+	#include <glad/glad.h>
+#endif
 #include <SharkEngine/util/Vector.hpp>
 
 struct Vertex {

@@ -4,34 +4,49 @@
 #include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+static void emscriptenLoop(void* arg) {
+    Application* app = static_cast<Application*>(arg);
+    app->runStep();
+}
+#endif
+
 Application::Application(const Config& config) : window(config.width, config.height, config.title) {
     renderer.init();
 };
 
 void Application::run() {
-
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop_arg(emscriptenLoop, this, 0, 1);
+#else
     while (!window.shouldClose()) {
-
-        updateTime(static_cast<float>(glfwGetTime()));
-
-        window.pollEvents();
-        window.getDimensions(config.width, config.height);
-
-        window.beginImGuiFrame();
-
-        for (auto& layer : layers) {
-            layer->onUpdate(deltaTime);
-        }
-
-        renderer.begin(config.width, config.height);
-
-        for (auto& layer : layers) {
-            layer->onRender(renderer);
-        }
-
-        window.endImGuiFrame();
-        window.swapBuffers();
+        runStep();
     }
+#endif
+}
+
+void Application::runStep() {
+    updateTime(static_cast<float>(glfwGetTime()));
+
+    window.pollEvents();
+    window.getDimensions(config.width, config.height);
+
+    window.beginImGuiFrame();
+
+    for (auto& layer : layers) {
+        layer->onUpdate(deltaTime);
+    }
+
+    renderer.begin(config.width, config.height);
+
+    for (auto& layer : layers) {
+        layer->onRender(renderer);
+    }
+
+    window.endImGuiFrame();
+    window.swapBuffers();
 }
 
 void Application::close() {

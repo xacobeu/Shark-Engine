@@ -6,27 +6,40 @@ A lightweight and cross-platform C++20 rendering engine built using OpenGL, GLFW
 
 * **`engine/`**: The core rendering engine library target.
 * **`demo/`**: A sandbox application demonstrating engine features.
-* **`res/`**: Default assets used by the engine.
+* **`engine/res/`**: Default assets used by the engine.
 
 ## Prerequisites
 
-* **C++20 Compiler** (MSVC, GCC, or Clang)
+* **C++20 Compiler**
 * **CMake**
 * **vcpkg**
 
----
+(optional, only for Web build):
+- **just**
+- **Ninja**
+- **Emscripten SDK** 
 
-## Running the demo
+## Running the Demo
 
+### Desktop Build
 ```bash
-cmake -B build
-cmake --build build --config Release
-.\build\demo\Release\SharkEngineDemo.exe
+# Build.
+just build desktop
+# Build and Run.
+just run desktop
 ```
 
----
+### WebAssembly Build
+```bash
+# Build.
+just build web
+# Build and Run.
+just run web
+```
 
-## Usage
+Use `just clean` to clean all built artifacts.
+
+## Usage as a Dependency
 You can configure CMake to automatically download, configure, and compile `SharkEngine` at build time from its GitHub repository:
 ```cmake
 include(FetchContent)

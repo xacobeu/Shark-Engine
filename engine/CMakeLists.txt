@@ -24,32 +24,38 @@ target_link_libraries(SharkEngine PUBLIC
     nlohmann_json::nlohmann_json
 )
 
-# Install targets
-install(TARGETS SharkEngine
-    EXPORT SharkEngineTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if(EMSCRIPTEN)
+    target_link_libraries(SharkEngine PUBLIC stb)
+endif()
 
-# Install headers preserving folder structure
-install(DIRECTORY include/SharkEngine DESTINATION include)
+# Install targets (disabled for WebAssembly)
+if(NOT EMSCRIPTEN)
+    install(TARGETS SharkEngine
+        EXPORT SharkEngineTargets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+    )
 
-# Configure package config for find_package
-include(CMakePackageConfigHelpers)
+    # Install headers preserving folder structure
+    install(DIRECTORY include/SharkEngine DESTINATION include)
 
-configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SharkEngineConfig.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/SharkEngineConfig.cmake"
-    INSTALL_DESTINATION lib/cmake/SharkEngine
-)
+    # Configure package config for find_package
+    include(CMakePackageConfigHelpers)
 
-install(EXPORT SharkEngineTargets
-    FILE SharkEngineTargets.cmake
-    NAMESPACE SharkEngine::
-    DESTINATION lib/cmake/SharkEngine
-)
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SharkEngineConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/SharkEngineConfig.cmake"
+        INSTALL_DESTINATION lib/cmake/SharkEngine
+    )
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SharkEngineConfig.cmake"
-    DESTINATION lib/cmake/SharkEngine
-)
+    install(EXPORT SharkEngineTargets
+        FILE SharkEngineTargets.cmake
+        NAMESPACE SharkEngine::
+        DESTINATION lib/cmake/SharkEngine
+    )
+
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SharkEngineConfig.cmake"
+        DESTINATION lib/cmake/SharkEngine
+    )
+endif()

@@ -1,6 +1,11 @@
 #pragma once
 
-#include <glad/glad.h>
+#ifdef SHARK_NO_GLAD
+	#include <GLES3/gl3.h>
+#else
+	#include <glad/glad.h>
+#endif
+
 #include <memory>
 #include <unordered_map>
 

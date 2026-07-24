@@ -21,6 +21,7 @@ public:
     ~Application() = default;
 
     void run();
+    void runStep();
     void close();
 
     const std::vector<std::unique_ptr<Layer>>& getLayers() const;

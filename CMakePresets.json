@@ -1,0 +1,75 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "desktop",
+      "displayName": "Desktop (Debug)",
+      "description": "Configure for desktop build",
+      "generator": "Ninja",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "binaryDir": "${sourceDir}/build/desktop-dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "web",
+      "displayName": "Web (Release)",
+      "description": "Configure for web build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/web-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "desktop",
+      "configurePreset": "desktop"
+    },
+    {
+      "name": "web",
+      "configurePreset": "web"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "desktop",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "desktop"
+        },
+        {
+          "type": "build",
+          "name": "desktop"
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "web"
+        },
+        {
+          "type": "build",
+          "name": "web"
+        }
+      ]
+    }
+  ]
+}

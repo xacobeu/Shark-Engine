@@ -25,7 +25,27 @@ namespace GL {
 
     GLuint Shader::compileSingle(GLenum type, const std::string& src) {
         GLuint shader = glCreateShader(type);
-        const char* c = src.c_str();
+        std::string processedSrc = src;
+
+#ifdef __EMSCRIPTEN__
+        size_t versionPos = processedSrc.find("#version");
+        if (versionPos != std::string::npos) {
+            size_t endOfLine = processedSrc.find("\n", versionPos);
+            if (endOfLine != std::string::npos) {
+                std::string replacement = "#version 300 es\n";
+                if (type == GL_FRAGMENT_SHADER) {
+                    replacement += "precision mediump float;\n";
+                }
+                processedSrc.replace(versionPos, endOfLine - versionPos + 1, replacement);
+            }
+        } else {
+            if (type == GL_FRAGMENT_SHADER) {
+                processedSrc = "precision mediump float;\n" + processedSrc;
+            }
+        }
+#endif
+
+        const char* c = processedSrc.c_str();
         glShaderSource(shader, 1, &c, nullptr);
         glCompileShader(shader);
 
