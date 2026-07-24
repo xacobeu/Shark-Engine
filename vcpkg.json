@@ -13,7 +13,6 @@
         "opengl3-binding"
       ]
     },
-    "implot",
     "stb",
     "earcut-hpp",
     "nlohmann-json"

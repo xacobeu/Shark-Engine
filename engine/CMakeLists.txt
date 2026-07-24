@@ -21,7 +21,6 @@ target_link_libraries(SharkEngine PUBLIC
     glfw
     glad::glad
     OpenGL::GL
-    implot::implot
     nlohmann_json::nlohmann_json
 )
 

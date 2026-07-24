@@ -5,7 +5,6 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "implot.h"
 
 #include <cstdio>
 
@@ -49,7 +48,6 @@ Window::Window(int width, int height, const char* title) {
 }
 
 Window::~Window() {
-    ImPlot::DestroyContext();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -61,7 +59,6 @@ Window::~Window() {
 void Window::initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImPlot::CreateContext();
 
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

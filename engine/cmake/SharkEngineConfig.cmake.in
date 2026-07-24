@@ -7,7 +7,6 @@ find_dependency(OpenGL)
 find_dependency(glfw3)
 find_dependency(glad)
 find_dependency(imgui)
-find_dependency(implot)
 find_dependency(nlohmann_json)
 
 include("${CMAKE_CURRENT_LIST_DIR}/SharkEngineTargets.cmake")
