@@ -24,7 +24,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Ninja
-        uses: llvm/ninja-build-action@v1
+        uses: threeal/setup-ninja@v1
 
       - name: Setup Emscripten (emsdk)
         uses: mymindstorm/setup-emsdk@v14
