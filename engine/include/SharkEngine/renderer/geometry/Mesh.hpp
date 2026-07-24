@@ -1,9 +1,9 @@
 #pragma once
 
 #include <vector>
-#include "util/Vector.hpp"
-#include "util/Pi.hpp"
-#include "renderer/GL/Vertex.hpp"
+#include <SharkEngine/util/Vector.hpp>
+#include <SharkEngine/util/Pi.hpp>
+#include <SharkEngine/renderer/GL/Vertex.hpp>
 
 class Mesh {
 public:

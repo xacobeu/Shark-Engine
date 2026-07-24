@@ -1,4 +1,4 @@
-#include "Shader.hpp"
+#include <SharkEngine/renderer/GL/Shader.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>

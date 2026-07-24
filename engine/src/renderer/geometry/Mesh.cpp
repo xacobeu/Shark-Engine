@@ -1,4 +1,4 @@
-#include "Mesh.hpp"
+#include <SharkEngine/renderer/geometry/Mesh.hpp>
 
 Mesh& Mesh::translate(const Vector3& t) {
     for (auto& v : data.vertices)

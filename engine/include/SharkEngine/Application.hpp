@@ -1,8 +1,8 @@
 #pragma once
 
-#include "renderer/Renderer.hpp"
-#include "Window.hpp"
-#include "renderer/Camera.hpp"
+#include <SharkEngine/renderer/Renderer.hpp>
+#include <SharkEngine/Window.hpp>
+#include <SharkEngine/renderer/Camera.hpp>
 
 #include <memory>
 #include <vector>

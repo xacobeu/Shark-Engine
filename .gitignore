@@ -1,0 +1,12 @@
+# Build directories
+build/
+
+# IDE Stuff
+.vscode/
+CMakeUserPresets.json
+
+# Vcpkg
+vcpkg_installed/
+
+# Nonsense
+imgui.ini

@@ -1,6 +1,6 @@
-#include "MeshFactory.hpp"
-#include "util/Pi.hpp"
-#include "renderer/GL/Vertex.hpp"
+#include <SharkEngine/renderer/geometry/MeshFactory.hpp>
+#include <SharkEngine/util/Pi.hpp>
+#include <SharkEngine/renderer/GL/Vertex.hpp>
 
 Mesh::MeshData MeshFactory::createCubeMesh() {
     Mesh::MeshData mesh;

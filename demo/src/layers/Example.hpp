@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Layer.hpp"
-#include "renderer/Renderer.hpp"
+#include <SharkEngine/Layer.hpp>
+#include <SharkEngine/renderer/Renderer.hpp>
 
 class Example : public Layer {
 public:

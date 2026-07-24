@@ -1,4 +1,4 @@
-#include "Window.hpp"
+#include <SharkEngine/Window.hpp>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -67,7 +67,6 @@ void Window::initImGui() {
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.Fonts->Clear();
     io.Fonts->AddFontFromFileTTF("res/font/AtkinsonHyperlegible-Regular.ttf", 20.0f);
-    io.Fonts->Build();
 
     ImGui::StyleColorsDark();
 

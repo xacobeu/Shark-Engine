@@ -1,8 +1,8 @@
 #include "Example.hpp"
 
-#include "Application.hpp"
+#include <SharkEngine/Application.hpp>
 #include "imgui.h"
-#include "renderer/geometry/MeshFactory.hpp"
+#include <SharkEngine/renderer/geometry/MeshFactory.hpp>
 
 #include <iostream>
 

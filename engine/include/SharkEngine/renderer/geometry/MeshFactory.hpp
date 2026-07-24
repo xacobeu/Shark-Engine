@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Mesh.hpp"
+#include <SharkEngine/renderer/geometry/Mesh.hpp>
 
 class MeshFactory {
 public:

@@ -1,4 +1,4 @@
-#include "Vertex.hpp"
+#include <SharkEngine/renderer/GL/Vertex.hpp>
 #include <cstddef>
 
 const std::array<Vertex::Attribute, 3> Vertex::attributes = {

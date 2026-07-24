@@ -2,7 +2,7 @@
 
 #include <array>
 #include <glad/glad.h>
-#include "util/Vector.hpp"
+#include <SharkEngine/util/Vector.hpp>
 
 struct Vertex {
     Vector3 position;

@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include "Vector.hpp"
+#include <SharkEngine/util/Vector.hpp>
 
 struct Matrix4 {
     float m[16]{}; // column-major
