@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,6 +32,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -39,31 +41,32 @@
         var Module = {
             preRun: [],
             postRun: [],
-            print: function(text) {
+            print: function (text) {
                 if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                 console.log(text);
             },
-            canvas: (function() {
+            canvas: (function () {
                 var canvas = document.getElementById('canvas');
                 // Prevent right click menu on the canvas
-                canvas.addEventListener("contextmenu", function(e) { e.preventDefault(); }, false);
+                canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); }, false);
                 return canvas;
             })(),
-            setStatus: function(text) {
+            setStatus: function (text) {
                 console.log("Status: " + text);
             },
             totalDependencies: 0,
-            monitorRunDependencies: function(left) {
+            monitorRunDependencies: function (left) {
                 this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
+                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
             }
         };
 
         Module.setStatus('Loading WebGL 2 Context...');
-        window.onerror = function(event) {
+        window.onerror = function (event) {
             console.error(event);
         };
     </script>
     {{{ SCRIPT }}}
 </body>
+
 </html>

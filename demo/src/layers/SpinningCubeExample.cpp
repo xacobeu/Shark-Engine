@@ -1,4 +1,4 @@
-#include "Example.hpp"
+#include "SpinningCubeExample.hpp"
 
 #include "imgui.h"
 #include <SharkEngine/Application.hpp>
@@ -6,12 +6,12 @@
 
 #include <iostream>
 
-void Example::onAttach() {
-	std::cout << "[DEBUG] Example layer attached" << std::endl;
+void SpinningCubeExample::onAttach() {
+	std::cout << "[DEBUG] SpinningCubeExample layer attached" << std::endl;
 	app->getCamera().distance = 6.0f;
 }
 
-void Example::onUpdate(float deltaTime) {
+void SpinningCubeExample::onUpdate(float deltaTime) {
 	elapsed += deltaTime;
 	++frameCount;
 
@@ -20,7 +20,7 @@ void Example::onUpdate(float deltaTime) {
 	}
 }
 
-void Example::onRender(Renderer &renderer) {
+void SpinningCubeExample::onRender(Renderer &renderer) {
 	if (!created) {
 		cube = renderer.createGameObject(MeshFactory::cube());
 		cube.transform.scale = {1.0f, 1.0f, 1.0f};

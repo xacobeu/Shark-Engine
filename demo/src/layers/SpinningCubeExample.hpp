@@ -3,7 +3,7 @@
 #include <SharkEngine/Layer.hpp>
 #include <SharkEngine/renderer/Renderer.hpp>
 
-class Example : public Layer {
+class SpinningCubeExample : public Layer {
 public:
     void onAttach() override;
     void onUpdate(float deltaTime) override;
