@@ -34,9 +34,24 @@ _run-desktop:
     cd build/desktop-dev/demo && ./SharkEngineDemo
 
 [private]
+[windows]
 _run-web:
-    emrun --no-browser build/web-release/demo/SharkEngineDemo.html
+    -try { emrun --no-browser build/web-release/demo/SharkEngineDemo.html } finally { Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*emrun*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }
+
+[private]
+[unix]
+_run-web:
+    -trap 'pkill -f emrun' INT TERM EXIT; emrun --no-browser build/web-release/demo/SharkEngineDemo.html
 
 # Clean build artifacts
+[windows]
 clean:
+    -Stop-Process -Name SharkEngineDemo -Force -ErrorAction SilentlyContinue
+    -Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*emrun*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    cmake -E rm -rf build compile_commands.json .clangd
+
+[unix]
+clean:
+    -pkill -f SharkEngineDemo
+    -pkill -f emrun
     cmake -E rm -rf build compile_commands.json .clangd
