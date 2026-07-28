@@ -19,7 +19,7 @@ if(EMSCRIPTEN)
         "-sUSE_GLFW=3"
         "-sFULL_ES3=1"
         "-sALLOW_MEMORY_GROWTH=1"
-        "--preload-file" "${CMAKE_SOURCE_DIR}/engine/res@/res"
+        "--preload-file" "${SharkEngine_SOURCE_DIR}/engine/res@/res"
         "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html"
     )
 
@@ -27,7 +27,7 @@ else()
     # Copy resources to build output dir
     add_custom_command(TARGET SharkEngineDemo POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/engine/res"
+            "${SharkEngine_SOURCE_DIR}/engine/res"
             "$<TARGET_FILE_DIR:SharkEngineDemo>/res"
         COMMENT "Copying engine resources to output directory"
     )
@@ -38,5 +38,5 @@ else()
     endif()
 
     install(TARGETS SharkEngineDemo RUNTIME DESTINATION bin)
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/engine/res/" DESTINATION bin/res)
+    install(DIRECTORY "${SharkEngine_SOURCE_DIR}/engine/res/" DESTINATION bin/res)
 endif()
