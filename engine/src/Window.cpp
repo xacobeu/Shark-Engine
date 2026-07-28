@@ -10,6 +10,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include <cstdio>
 
 Window::Window(int width, int height, const char* title) {
@@ -166,6 +170,22 @@ void Window::swapBuffers() const {
 }
 
 void Window::pollEvents() const {
+#ifdef __EMSCRIPTEN__
+    int width = EM_ASM_INT({
+        var canvas = document.getElementById('canvas');
+        return canvas ? canvas.clientWidth : window.innerWidth;
+    });
+    int height = EM_ASM_INT({
+        var canvas = document.getElementById('canvas');
+        return canvas ? canvas.clientHeight : window.innerHeight;
+    });
+
+    int currentWidth, currentHeight;
+    glfwGetWindowSize(window, &currentWidth, &currentHeight);
+    if (currentWidth != width || currentHeight != height) {
+        glfwSetWindowSize(window, width, height);
+    }
+#endif
     glfwPollEvents();
 }
 
