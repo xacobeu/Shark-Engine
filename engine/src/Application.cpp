@@ -13,9 +13,12 @@ static void emscriptenLoop(void* arg) {
 }
 #endif
 
+#include <SharkEngine/renderer/backends/IRenderDevice.hpp>
+
 Application::Application(const Config& config) : window(config.width, config.height, config.title) {
-    renderer.init();
-    window.setVSync(config.vsync);
+    device = IRenderDevice::create(GraphicsAPI::OpenGL);
+    renderer.init(device.get());
+    device->setVSync(config.vsync);
 }
 
 void Application::run() {

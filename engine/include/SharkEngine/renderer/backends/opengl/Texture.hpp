@@ -1,25 +1,29 @@
 #pragma once
 
-#include <SharkEngine/renderer/GL/GLObject.hpp>
+#include "../ITexture.hpp"
+#include "Object.hpp"
 #include <string>
 
-class Texture {
+namespace GL {
+
+class Texture : public ITexture {
 public:
     Texture() = default;
     explicit Texture(const std::string& filepath);
-    ~Texture() = default;
+    ~Texture() override = default;
 
+    // Disable copy
     Texture(const Texture&) = delete;
     Texture& operator=(const Texture&) = delete;
 
     Texture(Texture&&) noexcept = default;
     Texture& operator=(Texture&&) noexcept = default;
 
-    void bind(unsigned int slot = 0) const;
-    void unbind() const;
+    void bind(unsigned int slot = 0) const override;
+    void unbind() const override;
 
-    [[nodiscard]] int getWidth() const { return width; }
-    [[nodiscard]] int getHeight() const { return height; }
+    [[nodiscard]] int getWidth() const override { return width; }
+    [[nodiscard]] int getHeight() const override { return height; }
     [[nodiscard]] GLuint getId() const { return glTexture.get(); }
 
 private:
@@ -28,3 +32,5 @@ private:
     int height = 0;
     int channels = 0;
 };
+
+} // namespace GL

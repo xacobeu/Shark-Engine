@@ -48,10 +48,13 @@ public:
     void setScene(Scene* scene) { activeScene = scene; }
     [[nodiscard]] Scene* getScene() const { return activeScene; }
 
+    [[nodiscard]] IRenderDevice* getDevice() const { return device.get(); }
+
 private:
     Scene* activeScene = nullptr;
     Config config;
 
+    std::unique_ptr<IRenderDevice> device;
     Renderer renderer;
     Window window;
 

@@ -1,8 +1,7 @@
 #include "RayTracingExample.hpp"
-
 #include "imgui.h"
 #include <SharkEngine/Application.hpp>
-
+#include <SharkEngine/renderer/geometry/Vertex.hpp>
 #include <iostream>
 #include <cmath>
 
@@ -17,11 +16,13 @@ void RayTracingExample::onAttach() {
 #endif
 
     const std::string vertexShader = versionDirective + R"(
-        layout (location = 0) in vec2 aPos;
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec3 aNormal;
+        layout (location = 2) in vec2 aTexCoord;
         out vec2 TexCoord;
         void main() {
-            TexCoord = aPos * 0.5 + 0.5;
-            gl_Position = vec4(aPos, 0.0, 1.0);
+            TexCoord = aTexCoord;
+            gl_Position = vec4(aPos.xy, 0.0, 1.0);
         }
     )";
 
@@ -49,6 +50,7 @@ void RayTracingExample::onAttach() {
             vec3 oc = ro - center;
             float b = dot(oc, rd);
             float c = dot(oc, oc) - radius * radius;
+            if (c < 0.0) return -1.0;
             float discriminant = b * b - c;
             if (discriminant < 0.0) {
                 return -1.0;
@@ -61,118 +63,120 @@ void RayTracingExample::onAttach() {
             return -1.0;
         }
 
+        bool hitPlane(vec3 ro, vec3 rd, out float t, out vec3 normal) {
+            float denom = dot(rd, vec3(0.0, 1.0, 0.0));
+            if (abs(denom) > 0.0001) {
+                t = dot(vec3(0.0, -1.0, 0.0) - ro, vec3(0.0, 1.0, 0.0)) / denom;
+                normal = denom < 0.0 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, -1.0, 0.0);
+                return t >= 0.001;
+            }
+            return false;
+        }
+
         vec3 trace(vec3 ro, vec3 rd) {
-            Sphere s1 = Sphere(u_SpherePos, u_SphereRadius, vec3(0.9, 0.2, 0.2), u_EnableReflections);
-            Sphere s2 = Sphere(vec3(0.0, -101.0, -5.0), 100.0, vec3(0.0), false); // Checkerboard floor
+            Sphere s1 = Sphere(u_SpherePos, u_SphereRadius, vec3(0.9, 0.1, 0.15), u_EnableReflections);
+            Sphere s2 = Sphere(vec3(1.5, 0.5, -6.0), 0.7f, vec3(0.1, 0.8, 0.2), false);
+            Sphere s3 = Sphere(vec3(-1.8, -0.2, -4.0), 0.5f, vec3(0.1, 0.2, 0.8), false);
+            
+            vec3 color = vec3(0.0);
+            float currentReflectance = 1.0;
+            
+            vec3 currentRo = ro;
+            vec3 currentRd = rd;
 
-            float t1 = hitSphere(s1.center, s1.radius, ro, rd);
-            float t2 = hitSphere(s2.center, s2.radius, ro, rd);
-
-            float t = -1.0;
-            vec3 baseColor = vec3(0.0);
-            vec3 sphereCenter = vec3(0.0);
-            float sphereRadius = 0.0;
-            bool isMirror = false;
-
-            if (t1 > 0.0 && (t2 <= 0.0 || t1 < t2)) {
-                t = t1;
-                baseColor = s1.color;
-                sphereCenter = s1.center;
-                sphereRadius = s1.radius;
-                isMirror = s1.isMirror;
-            } else if (t2 > 0.0) {
-                t = t2;
-                sphereCenter = s2.center;
-                sphereRadius = s2.radius;
-                isMirror = s2.isMirror;
-
-                // Procedural checkerboard floor
-                vec3 hitPoint = ro + rd * t;
-                int checkX = int(floor(hitPoint.x * 0.5));
-                int checkZ = int(floor(hitPoint.z * 0.5));
-                if ((checkX + checkZ) % 2 == 0) {
-                    baseColor = vec3(0.8);
-                } else {
-                    baseColor = vec3(0.3);
+            for (int depth = 0; depth < 3; depth++) {
+                float minT = 1e20;
+                int hitType = 0; // 0 = sky, 1 = plane, 2 = sphere1, 3 = sphere2, 4 = sphere3
+                vec3 hitNormal;
+                vec3 hitColor = vec3(0.0);
+                bool hitMirror = false;
+                
+                // Test plane
+                float tPlane;
+                vec3 planeNorm;
+                if (hitPlane(currentRo, currentRd, tPlane, planeNorm)) {
+                    if (tPlane < minT) {
+                        minT = tPlane;
+                        hitType = 1;
+                        hitNormal = planeNorm;
+                        // Procedural checkerboard floor pattern
+                        vec3 hitPos = currentRo + currentRd * tPlane;
+                        float checker = mod(floor(hitPos.x) + floor(hitPos.z), 2.0);
+                        hitColor = checker > 0.5 ? vec3(0.3) : vec3(0.55);
+                    }
                 }
-            }
-
-            if (t > 0.0) {
-                vec3 hitPoint = ro + rd * t;
-                vec3 normal = normalize(hitPoint - sphereCenter);
-                vec3 lightDir = normalize(vec3(1.0, 2.0, 1.0));
-
-                // Shadow check
-                bool inShadow = false;
+                
+                // Test sphere 1
+                float tS1 = hitSphere(s1.center, s1.radius, currentRo, currentRd);
+                if (tS1 > 0.0 && tS1 < minT) {
+                    minT = tS1;
+                    hitType = 2;
+                    hitNormal = normalize((currentRo + currentRd * tS1) - s1.center);
+                    hitColor = s1.color;
+                    hitMirror = s1.isMirror;
+                }
+                
+                // Test sphere 2
+                float tS2 = hitSphere(s2.center, s2.radius, currentRo, currentRd);
+                if (tS2 > 0.0 && tS2 < minT) {
+                    minT = tS2;
+                    hitType = 3;
+                    hitNormal = normalize((currentRo + currentRd * tS2) - s2.center);
+                    hitColor = s2.color;
+                    hitMirror = s2.isMirror;
+                }
+                
+                // Test sphere 3
+                float tS3 = hitSphere(s3.center, s3.radius, currentRo, currentRd);
+                if (tS3 > 0.0 && tS3 < minT) {
+                    minT = tS3;
+                    hitType = 4;
+                    hitNormal = normalize((currentRo + currentRd * tS3) - s3.center);
+                    hitColor = s3.color;
+                    hitMirror = s3.isMirror;
+                }
+                
+                if (hitType == 0) {
+                    // Procedural sky gradient color background
+                    float t = 0.5 * (currentRd.y + 1.0);
+                    vec3 skyColor = (1.0 - t) * vec3(1.0) + t * vec3(0.5, 0.7, 1.0);
+                    color += currentReflectance * skyColor;
+                    break;
+                }
+                
+                // Intersection point calculation
+                vec3 hitPoint = currentRo + currentRd * minT;
+                
+                // Shadow ray calculation
+                float shadowMult = 1.0;
                 if (u_EnableShadows) {
-                    float shadowT1 = hitSphere(s1.center, s1.radius, hitPoint + normal * 0.001, lightDir);
-                    float shadowT2 = hitSphere(s2.center, s2.radius, hitPoint + normal * 0.001, lightDir);
-                    inShadow = (shadowT1 > 0.0 || shadowT2 > 0.0);
-                }
-
-                float diff = inShadow ? 0.0 : max(dot(normal, lightDir), 0.0);
-                float ambient = 0.15;
-                vec3 diffuseColor = baseColor * (diff * 0.8 + ambient);
-
-                if (isMirror) {
-                    // Reflection bounce
-                    vec3 reflectedDir = normalize(reflect(rd, normal));
-                    vec3 refRo = hitPoint + normal * 0.001;
-
-                    float rt1 = hitSphere(s1.center, s1.radius, refRo, reflectedDir);
-                    float rt2 = hitSphere(s2.center, s2.radius, refRo, reflectedDir);
-
-                    float rt = -1.0;
-                    vec3 refBaseColor = vec3(0.0);
-                    vec3 refSphereCenter = vec3(0.0);
-
-                    if (rt1 > 0.0 && (rt2 <= 0.0 || rt1 < rt2)) {
-                        rt = rt1;
-                        refBaseColor = s1.color;
-                        refSphereCenter = s1.center;
-                    } else if (rt2 > 0.0) {
-                        rt = rt2;
-                        refSphereCenter = s2.center;
-
-                        vec3 refHitPoint = refRo + reflectedDir * rt;
-                        int checkX = int(floor(refHitPoint.x * 0.5));
-                        int checkZ = int(floor(refHitPoint.z * 0.5));
-                        if ((checkX + checkZ) % 2 == 0) {
-                            refBaseColor = vec3(0.8);
-                        } else {
-                            refBaseColor = vec3(0.3);
-                        }
+                    vec3 lightDir = normalize(vec3(2.0, 6.0, 1.0));
+                    vec3 shadowRo = hitPoint + hitNormal * 0.001; // offset along normal to avoid self-intersection
+                    
+                    if (hitSphere(s1.center, s1.radius, shadowRo, lightDir) > 0.0 ||
+                        hitSphere(s2.center, s2.radius, shadowRo, lightDir) > 0.0 ||
+                        hitSphere(s3.center, s3.radius, shadowRo, lightDir) > 0.0) {
+                        shadowMult = 0.25; // in shadow
                     }
-
-                    vec3 reflectionColor;
-                    if (rt > 0.0) {
-                        vec3 refHitPoint = refRo + reflectedDir * rt;
-                        vec3 refNormal = normalize(refHitPoint - refSphereCenter);
-
-                        bool refInShadow = false;
-                        if (u_EnableShadows) {
-                            float shadowT1 = hitSphere(s1.center, s1.radius, refHitPoint + refNormal * 0.001, lightDir);
-                            float shadowT2 = hitSphere(s2.center, s2.radius, refHitPoint + refNormal * 0.001, lightDir);
-                            refInShadow = (shadowT1 > 0.0 || shadowT2 > 0.0);
-                        }
-
-                        float refDiff = refInShadow ? 0.0 : max(dot(refNormal, lightDir), 0.0);
-                        reflectionColor = refBaseColor * (refDiff * 0.8 + 0.15);
-                    } else {
-                        // Sky
-                        float a = 0.5 * (reflectedDir.y + 1.0);
-                        reflectionColor = mix(vec3(1.0), vec3(0.5, 0.7, 1.0), a);
-                    }
-
-                    return mix(diffuseColor, reflectionColor, u_ReflectionStrength);
                 }
-
-                return diffuseColor;
+                
+                // Apply diffuse shading calculations (Lambertian reflectance)
+                vec3 lightDir = normalize(vec3(2.0, 6.0, 1.0));
+                float diff = max(dot(hitNormal, lightDir), 0.0);
+                vec3 localColor = hitColor * (diff * shadowMult * 0.8 + 0.2); // ambient component of 0.2
+                
+                if (hitMirror) {
+                    color += currentReflectance * localColor * (1.0 - u_ReflectionStrength);
+                    currentReflectance *= u_ReflectionStrength;
+                    currentRo = hitPoint + hitNormal * 0.001;
+                    currentRd = reflect(currentRd, hitNormal);
+                } else {
+                    color += currentReflectance * localColor;
+                    break;
+                }
             }
-
-            // Sky
-            float a = 0.5 * (rd.y + 1.0);
-            return mix(vec3(1.0), vec3(0.5, 0.7, 1.0), a);
+            
+            return color;
         }
 
         void main() {
@@ -189,81 +193,67 @@ void RayTracingExample::onAttach() {
         }
     )";
 
-    m_RaytraceShader.compile(vertexShader, fragmentShader);
+    raytraceShader = app->getDevice()->createShaderFromSource(vertexShader, fragmentShader);
 
     // Quad geometry (NDC covering [-1, 1])
-    float quadVertices[] = {
-        -1.0f,  1.0f,
-        -1.0f, -1.0f,
-         1.0f, -1.0f,
+    Vertex quadVertices[] = {
+        { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} },
+        { {-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} },
+        { { 1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} },
 
-        -1.0f,  1.0f,
-         1.0f, -1.0f,
-         1.0f,  1.0f
+        { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} },
+        { { 1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} },
+        { { 1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} }
     };
 
-    m_QuadVAO.create();
-    m_QuadVBO.create();
-
-    m_QuadVAO.bind();
-    m_QuadVBO.bind();
-    m_QuadVBO.data(sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
-
-    m_QuadVAO.unbind();
+    quadVbo = app->getDevice()->createVertexBuffer(quadVertices, sizeof(quadVertices));
 }
 
 void RayTracingExample::onUpdate(float deltaTime) {
-    m_Time += deltaTime;
+    time += deltaTime;
 
     // Dynamic sphere motion
-    m_Sphere1Pos.x = std::sin(m_Time) * 1.5f;
-    m_Sphere1Pos.y = std::cos(m_Time * 1.5f) * 0.5f;
+    sphere1Pos.x = std::sin(time) * 1.5f;
+    sphere1Pos.y = std::cos(time * 1.5f) * 0.5f;
 }
 
 void RayTracingExample::onRender(Renderer& renderer) {
-    // 1. Clear window
     renderer.begin(app->getWidth(), app->getHeight());
-
-    // 2. Draw the full-screen raytraced background quad
-    m_RaytraceShader.bind();
+    raytraceShader->bind();
 
     float aspectRatio = static_cast<float>(app->getWidth()) / static_cast<float>(app->getHeight());
-    m_RaytraceShader.setFloat("u_AspectRatio", aspectRatio);
-    m_RaytraceShader.setFloat("u_Time", m_Time);
-    m_RaytraceShader.setVec3("u_CameraPos", m_CameraPos.x, m_CameraPos.y, m_CameraPos.z);
-    m_RaytraceShader.setVec3("u_SpherePos", m_Sphere1Pos.x, m_Sphere1Pos.y, m_Sphere1Pos.z);
-    m_RaytraceShader.setFloat("u_SphereRadius", m_Sphere1Radius);
-    m_RaytraceShader.setInt("u_EnableShadows", m_EnableShadows ? 1 : 0);
-    m_RaytraceShader.setInt("u_EnableReflections", m_EnableReflections ? 1 : 0);
-    m_RaytraceShader.setFloat("u_ReflectionStrength", m_ReflectionStrength);
+    raytraceShader->setFloat("u_AspectRatio", aspectRatio);
+    raytraceShader->setFloat("u_Time", time);
+    raytraceShader->setVec3("u_CameraPos", cameraPos.x, cameraPos.y, cameraPos.z);
+    raytraceShader->setVec3("u_SpherePos", sphere1Pos.x, sphere1Pos.y, sphere1Pos.z);
+    raytraceShader->setFloat("u_SphereRadius", sphere1Radius);
+    raytraceShader->setInt("u_EnableShadows", enableShadows ? 1 : 0);
+    raytraceShader->setInt("u_EnableReflections", enableReflections ? 1 : 0);
+    raytraceShader->setFloat("u_ReflectionStrength", reflectionStrength);
 
-    m_QuadVAO.bind();
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    m_QuadVAO.unbind();
-    m_RaytraceShader.unbind();
+    quadVbo->bind();
+    app->getDevice()->drawArrays(6);
+    quadVbo->unbind();
+    raytraceShader->unbind();
 
-    // 3. Draw ImGui interface as a floating overlay window
     ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiCond_FirstUseEver);
     ImGui::Begin("GPU Raytracer Settings");
 
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-    ImGui::Checkbox("Enable Shadows", &m_EnableShadows);
-    ImGui::Checkbox("Enable Reflections", &m_EnableReflections);
-    if (m_EnableReflections) {
-        ImGui::SliderFloat("Reflection Strength", &m_ReflectionStrength, 0.0f, 1.0f);
+    ImGui::Checkbox("Enable Shadows", &enableShadows);
+    ImGui::Checkbox("Enable Reflections", &enableReflections);
+    if (enableReflections) {
+        ImGui::SliderFloat("Reflection Strength", &reflectionStrength, 0.0f, 1.0f);
     }
 
     ImGui::Separator();
     ImGui::Text("Camera Settings");
-    ImGui::SliderFloat3("Camera Position", &m_CameraPos.x, -5.0f, 5.0f);
+    ImGui::SliderFloat3("Camera Position", &cameraPos.x, -5.0f, 5.0f);
 
     ImGui::Separator();
     ImGui::Text("Red Sphere Settings");
-    ImGui::SliderFloat3("Sphere Center", &m_Sphere1Pos.x, -5.0f, 5.0f);
-    ImGui::SliderFloat("Sphere Radius", &m_Sphere1Radius, 0.1f, 3.0f);
+    ImGui::SliderFloat3("Sphere Center", &sphere1Pos.x, -5.0f, 5.0f);
+    ImGui::SliderFloat("Sphere Radius", &sphere1Radius, 0.1f, 3.0f);
 
     ImGui::End();
 }

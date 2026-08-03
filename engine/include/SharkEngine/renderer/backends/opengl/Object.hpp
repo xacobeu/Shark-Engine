@@ -12,9 +12,9 @@
 
 namespace GL {
 
-template <typename T> class GLObject {
+template <typename T> class Object {
   public:
-	GLObject() = default;
+	Object() = default;
 
 	void create() {
 		if (id == 0)
@@ -43,14 +43,14 @@ template <typename T> class GLObject {
 		T::Unbind();
 	}
 
-	~GLObject() {
+	~Object() {
 		if (id != 0)
 			T::Del(1, &id);
 	}
 
-	GLObject(GLObject &&other) noexcept : id(other.id) { other.id = 0; }
+	Object(Object &&other) noexcept : id(other.id) { other.id = 0; }
 
-	GLObject &operator=(GLObject &&other) noexcept {
+	Object &operator=(Object &&other) noexcept {
 		if (this != &other) {
 			if (id != 0)
 				T::Del(1, &id);
@@ -62,26 +62,14 @@ template <typename T> class GLObject {
 
 	GLuint get() const { return id; }
 
-	template <typename VertexT>
-		requires requires(GLuint index, GLint size, GLenum type, GLboolean norm,
-						  GLsizei stride, std::size_t offset) {
-			T::Attrib(index, size, type, norm, stride, offset);
-		}
-	void setLayout() const {
-		for (const auto &a : VertexT::attributes) {
-			T::Attrib(a.index, a.size, a.type, GL_FALSE, sizeof(VertexT),
-					  a.offset);
-		}
-	}
-
   private:
 	GLuint id = 0;
 
-	GLObject(const GLObject &) = delete;
-	GLObject &operator=(const GLObject &) = delete;
+	Object(const Object &) = delete;
+	Object &operator=(const Object &) = delete;
 };
 
-struct VertexArrayObject {
+struct VertexArrayOperations {
 	static void Gen(GLsizei n, GLuint *ids) { glGenVertexArrays(n, ids); }
 	static void Del(GLsizei n, const GLuint *ids) {
 		glDeleteVertexArrays(n, ids);
@@ -98,17 +86,18 @@ struct VertexArrayObject {
 	}
 };
 
-template <GLenum target> struct BufferObject {
+template <GLenum target> struct BufferOperations {
 	static void Gen(GLsizei n, GLuint *ids) { glGenBuffers(n, ids); }
 	static void Del(GLsizei n, const GLuint *ids) { glDeleteBuffers(n, ids); }
 	static void Bind(GLuint id) { glBindBuffer(target, id); }
+	static void Unbind() { glBindBuffer(target, 0); }
 
 	static void Data(GLsizeiptr size, const void *data, GLenum usage) {
 		glBufferData(target, size, data, usage);
 	}
 };
 
-struct Texture {
+struct TextureOperations {
 	static void Gen(GLsizei n, GLuint *ids) { glGenTextures(n, ids); }
 	static void Del(GLsizei n, const GLuint *ids) { glDeleteTextures(n, ids); }
 	static void Bind(GLuint id, GLenum target = GL_TEXTURE_2D) {
@@ -116,8 +105,8 @@ struct Texture {
 	}
 };
 
-using TextureObject = GLObject<Texture>;
-using VertexBuffer = GLObject<BufferObject<GL_ARRAY_BUFFER>>;
-using ElementBuffer = GLObject<BufferObject<GL_ELEMENT_ARRAY_BUFFER>>;
-using VertexArray = GLObject<VertexArrayObject>;
+using TextureObject = Object<TextureOperations>;
+using VertexBufferObject = Object<BufferOperations<GL_ARRAY_BUFFER>>;
+using ElementBufferObject = Object<BufferOperations<GL_ELEMENT_ARRAY_BUFFER>>;
+using VertexArrayObject = Object<VertexArrayOperations>;
 } // namespace GL

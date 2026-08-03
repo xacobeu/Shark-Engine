@@ -1,6 +1,6 @@
 #include <SharkEngine/renderer/geometry/MeshFactory.hpp>
-#include <SharkEngine/util/Pi.hpp>
-#include <SharkEngine/renderer/GL/Vertex.hpp>
+#include <SharkEngine/renderer/geometry/Vertex.hpp>
+#include <numbers>
 
 Mesh::MeshData MeshFactory::createCubeMesh() {
     Mesh::MeshData mesh;
@@ -63,8 +63,8 @@ Mesh::MeshData MeshFactory::createSphereMesh(const int resolution, const Vector3
     // Generate UV sphere
     for (int lat = 0; lat <= resolution; lat++) {
         for (int lon = 0; lon <= resolution; lon++) {
-            float theta = float(lat) / resolution * PI;
-            float phi = float(lon) / resolution * TWO_PI;
+            float theta = float(lat) / resolution * std::numbers::pi_v<float>;
+            float phi = float(lon) / resolution * 2 * std::numbers::pi_v<float>;
 
             // Spherical coordinates to cartesian
             Vector3 pointOnSphere = {

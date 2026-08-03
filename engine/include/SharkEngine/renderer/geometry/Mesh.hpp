@@ -2,8 +2,7 @@
 
 #include <vector>
 #include <SharkEngine/util/Vector.hpp>
-#include <SharkEngine/util/Pi.hpp>
-#include <SharkEngine/renderer/GL/Vertex.hpp>
+#include <SharkEngine/renderer/geometry/Vertex.hpp>
 
 class Mesh {
 public:

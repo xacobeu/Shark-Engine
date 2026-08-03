@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Camera.hpp"
+#include <numbers>
 #include <cmath>
 
 class FlyingCamera : public Camera {
@@ -15,10 +16,9 @@ public:
     FlyingCamera* setNear(float newNear) { Camera::setNear(newNear); return this; }
     FlyingCamera* setFar(float newFar) { Camera::setFar(newFar); return this; }
 
-    // Camera matrices.
     [[nodiscard]] Matrix4 getViewMatrix() const override {
-        float pitchRad = transform.rotationDeg.x * 3.14159265f / 180.0f;
-        float yawRad = transform.rotationDeg.y * 3.14159265f / 180.0f;
+        float pitchRad = transform.rotationDeg.x * std::numbers::pi_v<float> / 180.0f;
+        float yawRad = transform.rotationDeg.y * std::numbers::pi_v<float> / 180.0f;
 
         Vector3 direction = {
             cos(pitchRad) * cos(yawRad),

@@ -2,6 +2,7 @@
 #include <SharkEngine/renderer/scene/node_types/OrbitCamera.hpp>
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <numbers>
 
 void OrbitCamera::update(Application* app, float) {
     // Zoom
@@ -52,7 +53,7 @@ void OrbitCamera::update(Application* app, float) {
         double dx = mouseX - lastPanX;
         double dy = mouseY - lastPanY;
 
-        float yawRad = transform.rotationDeg.y * 3.14159265f / 180.0f;
+        float yawRad = transform.rotationDeg.y * std::numbers::pi_v<float> / 180.0f;
 
         Vector3 right = { -std::sin(yawRad), 0.0f, std::cos(yawRad) };
         Vector3 up = { 0.0f, 1.0f, 0.0f };

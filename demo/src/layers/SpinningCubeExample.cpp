@@ -18,7 +18,7 @@ void SpinningCubeExample::onAttach() {
 		->setMesh(std::make_shared<Mesh>(MeshFactory::cube()))
 		->setScale({1.0f, 1.0f, 1.0f})
 		->setPosition({0.0f, 0.0f, 0.0f})
-		->setTexture(std::make_shared<Texture>("res/textures/scifi_crate.png"));
+		->setTexture(app->getDevice()->createTexture("res/textures/scifi_crate.png"));
 }
 
 void SpinningCubeExample::onUpdate(float deltaTime) {

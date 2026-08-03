@@ -2,6 +2,7 @@
 #include <SharkEngine/renderer/scene/node_types/FlyingCamera.hpp>
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <numbers>
 
 void FlyingCamera::update(Application* app, float deltaTime) {
     double mouseX = app->getCursorX();
@@ -17,7 +18,6 @@ void FlyingCamera::update(Application* app, float deltaTime) {
 
         double dx = mouseX - lastMouseX;
         double dy = mouseY - lastMouseY;
-
         Vector3 rot = getRotation();
         rot.y += static_cast<float>(dx) * 0.15f;
         rot.x -= static_cast<float>(dy) * 0.15f;
@@ -36,8 +36,8 @@ void FlyingCamera::update(Application* app, float deltaTime) {
     // Free flight controls
     float speed = 5.0f * deltaTime;
 
-    float pitchRad = transform.rotationDeg.x * 3.14159265f / 180.0f;
-    float yawRad = transform.rotationDeg.y * 3.14159265f / 180.0f;
+    float pitchRad = transform.rotationDeg.x * std::numbers::pi_v<float> / 180.0f;
+    float yawRad = transform.rotationDeg.y * std::numbers::pi_v<float> / 180.0f;
 
     Vector3 direction = {
         std::cos(pitchRad) * std::cos(yawRad),

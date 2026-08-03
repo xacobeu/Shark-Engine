@@ -2,13 +2,16 @@ add_library(SharkEngine STATIC
     src/Application.cpp
     src/Window.cpp
     src/renderer/Renderer.cpp
+    src/renderer/backends/IRenderDevice.cpp
     src/renderer/scene/OrbitCamera.cpp
     src/renderer/scene/FlyingCamera.cpp
-    src/renderer/Texture.cpp
+    src/renderer/backends/opengl/VertexBuffer.cpp
+    src/renderer/backends/opengl/IndexBuffer.cpp
+    src/renderer/backends/opengl/Shader.cpp
+    src/renderer/backends/opengl/Texture.cpp
+    src/renderer/backends/opengl/RenderDevice.cpp
     src/renderer/geometry/Mesh.cpp
     src/renderer/geometry/MeshFactory.cpp
-    src/renderer/GL/Shader.cpp
-    src/renderer/GL/Vertex.cpp
 )
 
 target_compile_options(SharkEngine PRIVATE ${SHARK_COMPILER_OPTIONS})

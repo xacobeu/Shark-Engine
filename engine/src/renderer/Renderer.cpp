@@ -1,26 +1,26 @@
 #include <SharkEngine/renderer/Renderer.hpp>
+#include <SharkEngine/renderer/geometry/Vertex.hpp>
 #include <SharkEngine/util/Matrix4.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-void Renderer::init() {
+void Renderer::init(IRenderDevice* renderDevice) {
+  device = renderDevice;
   if (!defaultShader) {
-    defaultShader = std::make_shared<GL::Shader>();
-    defaultShader->compileFromFiles("res/shaders/vertex.glsl",
-                                    "res/shaders/fragment.glsl");
+    defaultShader = device->createShader("res/shaders/vertex.glsl",
+                                         "res/shaders/fragment.glsl");
   }
 }
 
 void Renderer::begin(int width, int height) {
-  glViewport(0, 0, width, height);
-  glClearColor(0.05f, 0.2f, 0.35f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glEnable(GL_DEPTH_TEST);
+  if (device) {
+    device->setViewport(0, 0, width, height);
+    device->begin(0.05f, 0.2f, 0.35f, 1.0f);
+  }
 }
 
 void Renderer::render(const Scene &scene, int width, int height) {
-  init();
+  if (!device) {
+    return;
+  }
 
   Camera* camera = scene.getActiveCamera();
   if (!camera) {
@@ -62,8 +62,11 @@ void Renderer::render(const Scene &scene, int width, int height) {
     defaultShader->setInt("u_Texture", 0);
     Vector4 color = entity->getColor();
     defaultShader->setVec4("u_Color", color.x, color.y, color.z, color.w);
+    defaultShader->setMat4("u_Transform", mvp.data());
 
-    submit(buffers.vao, buffers.indexCount, defaultShader, mvp);
+    buffers.vbo->bind();
+    buffers.ebo->bind();
+    device->drawIndexed(static_cast<unsigned int>(buffers.ebo->getIndexCount()));
 
     if (hasTexture) {
       entity->getTexture()->unbind();
@@ -79,48 +82,17 @@ Renderer::uploadMeshIfNeeded(const std::shared_ptr<Mesh> &mesh) {
     return it->second;
   }
 
-  MeshBuffers buffers;
-  buffers.vao = std::make_shared<GL::VertexArray>();
-  buffers.vbo = std::make_shared<GL::VertexBuffer>();
-  buffers.ebo = std::make_shared<GL::ElementBuffer>();
-  buffers.indexCount = std::make_shared<int>(0);
-
-  buffers.vao->create();
-  buffers.vbo->create();
-  buffers.ebo->create();
-
   const auto &meshData = mesh->getData();
-  *buffers.indexCount = static_cast<int>(meshData.triangles.size());
 
-  buffers.vao->bind();
-  buffers.vbo->bind();
-  buffers.vbo->data(
-      static_cast<GLsizeiptr>(meshData.vertices.size() * sizeof(Vertex)),
-      meshData.vertices.data(), GL_STATIC_DRAW);
-
-  buffers.ebo->bind();
-  buffers.ebo->data(
-      static_cast<GLsizeiptr>(meshData.triangles.size() * sizeof(int)),
-      meshData.triangles.data(), GL_STATIC_DRAW);
-
-  buffers.vao->setLayout<Vertex>();
-  buffers.vao->unbind();
+  MeshBuffers buffers;
+  buffers.vbo = device->createVertexBuffer(
+      meshData.vertices.data(),
+      meshData.vertices.size() * sizeof(Vertex));
+  buffers.ebo = device->createIndexBuffer(
+      meshData.triangles.data(),
+      meshData.triangles.size());
 
   auto [insertedIt, inserted] = meshCache.emplace(key, std::move(buffers));
   (void)inserted;
   return insertedIt->second;
-}
-
-void Renderer::submit(const std::shared_ptr<GL::VertexArray> &vao,
-                      const std::shared_ptr<int> indexCount,
-                      const std::shared_ptr<GL::Shader> &shader,
-                      const Matrix4 &transform) {
-
-  shader->bind();
-  shader->setMat4("u_Transform", transform.data());
-
-  vao->bind();
-  glDrawElements(GL_TRIANGLES, *indexCount, GL_UNSIGNED_INT, 0);
-  vao->unbind();
-  shader->unbind();
 }

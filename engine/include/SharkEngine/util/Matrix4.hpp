@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <numbers>
 #include <SharkEngine/util/Vector.hpp>
 
 struct Matrix4 {
@@ -29,7 +30,7 @@ struct Matrix4 {
 
     static Matrix4 perspective(float fovDeg, float aspect, float nearZ, float farZ) {
         Matrix4 r{};
-        float f = 1.0f / std::tan((fovDeg * 0.5f) * 3.14159265f / 180.0f);
+        float f = 1.0f / std::tan((fovDeg * 0.5f) * std::numbers::pi_v<float> / 180.0f);
 
         r.m[0]  = f / aspect;
         r.m[5]  = f;
@@ -73,7 +74,7 @@ struct Matrix4 {
 
     static Matrix4 rotateX(float angleDeg) {
         Matrix4 r = identity();
-        float rad = angleDeg * 3.14159265f / 180.0f;
+        float rad = angleDeg * std::numbers::pi_v<float> / 180.0f;
         float c = std::cos(rad);
         float s = std::sin(rad);
         r.m[5] = c;
@@ -85,7 +86,7 @@ struct Matrix4 {
 
     static Matrix4 rotateY(float angleDeg) {
         Matrix4 r = identity();
-        float rad = angleDeg * 3.14159265f / 180.0f;
+        float rad = angleDeg * std::numbers::pi_v<float> / 180.0f;
         float c = std::cos(rad);
         float s = std::sin(rad);
         r.m[0] = c;
@@ -97,7 +98,7 @@ struct Matrix4 {
 
     static Matrix4 rotateZ(float angleDeg) {
         Matrix4 r = identity();
-        float rad = angleDeg * 3.14159265f / 180.0f;
+        float rad = angleDeg * std::numbers::pi_v<float> / 180.0f;
         float c = std::cos(rad);
         float s = std::sin(rad);
         r.m[0] = c;

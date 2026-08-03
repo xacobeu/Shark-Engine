@@ -2,6 +2,7 @@
 
 #include "Camera.hpp"
 #include <cmath>
+#include <numbers>
 
 class OrbitCamera : public Camera {
 public:
@@ -25,8 +26,8 @@ public:
 
     // Camera matrices.
     [[nodiscard]] Matrix4 getViewMatrix() const override {
-        float pitchRad = transform.rotationDeg.x * 3.14159265f / 180.0f;
-        float yawRad = transform.rotationDeg.y * 3.14159265f / 180.0f;
+        float pitchRad = transform.rotationDeg.x * std::numbers::pi_v<float> / 180.0f;
+        float yawRad = transform.rotationDeg.y * std::numbers::pi_v<float> / 180.0f;
 
         Vector3 pos = {
             target.x + distance * cos(pitchRad) * cos(yawRad),

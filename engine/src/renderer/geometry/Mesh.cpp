@@ -1,4 +1,5 @@
 #include <SharkEngine/renderer/geometry/Mesh.hpp>
+#include <numbers>
 
 Mesh& Mesh::translate(const Vector3& t) {
     for (auto& v : data.vertices)
@@ -20,7 +21,7 @@ Mesh& Mesh::scale(float s) {
 }
 
 Mesh& Mesh::rotateX(float angleDeg) {
-    float a = angleDeg * PI / 180.0f;
+    float a = angleDeg * std::numbers::pi_v<float> / 180.0f;
     float c = std::cos(a);
     float s = std::sin(a);
     for (auto& v : data.vertices) {
@@ -36,7 +37,7 @@ Mesh& Mesh::rotateX(float angleDeg) {
 }
 
 Mesh& Mesh::rotateY(float angleDeg) {
-    float a = angleDeg * PI / 180.0f;
+    float a = angleDeg * std::numbers::pi_v<float> / 180.0f;
     float c = std::cos(a);
     float s = std::sin(a);
     for (auto& v : data.vertices) {
@@ -52,7 +53,7 @@ Mesh& Mesh::rotateY(float angleDeg) {
 }
 
 Mesh& Mesh::rotateZ(float angleDeg) {
-    float a = angleDeg * PI / 180.0f;
+    float a = angleDeg * std::numbers::pi_v<float> / 180.0f;
     float c = std::cos(a);
     float s = std::sin(a);
     for (auto& v : data.vertices) {

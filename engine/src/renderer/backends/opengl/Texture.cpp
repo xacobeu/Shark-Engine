@@ -1,11 +1,15 @@
-#include <SharkEngine/renderer/Texture.hpp>
+#include <SharkEngine/renderer/backends/opengl/Texture.hpp>
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <iostream>
 #include <stdexcept>
 
+namespace GL {
+
 Texture::Texture(const std::string& filepath) {
     glTexture.create();
 
+    // Flip textures vertically as OpenGL expects UV coordinates to start from bottom-left
     stbi_set_flip_vertically_on_load(true);
 
     int w, h, ch;
@@ -59,3 +63,5 @@ void Texture::bind(unsigned int slot) const {
 void Texture::unbind() const {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+} // namespace GL
