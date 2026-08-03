@@ -29,6 +29,7 @@ class Shader {
 	void setFloat(const std::string &name, float v);
 	void setVec2(const std::string &name, float x, float y);
 	void setVec3(const std::string &name, float x, float y, float z);
+	void setVec4(const std::string &name, float x, float y, float z, float w);
 
 	GLuint id() const { return program; }
 

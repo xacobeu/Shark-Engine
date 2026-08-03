@@ -2,7 +2,7 @@
 
 #include "../Node.hpp"
 #include <memory>
-class Texture;
+#include <SharkEngine/renderer/Texture.hpp>
 #include <SharkEngine/renderer/geometry/Mesh.hpp>
 #include <SharkEngine/util/Vector.hpp>
 

@@ -136,6 +136,10 @@ namespace GL {
         glUniform3f(uniform(name), x, y, z);
     }
 
+    void Shader::setVec4(const std::string& name, float x, float y, float z, float w) {
+        glUniform4f(uniform(name), x, y, z, w);
+    }
+
     std::string Shader::loadTextFile(const std::string& path) {
         std::ifstream file(path);
         if (!file.is_open()) {

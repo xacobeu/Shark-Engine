@@ -2,6 +2,7 @@ add_library(SharkEngine STATIC
     src/Application.cpp
     src/Window.cpp
     src/renderer/Renderer.cpp
+    src/renderer/Texture.cpp
     src/renderer/geometry/Mesh.cpp
     src/renderer/geometry/MeshFactory.cpp
     src/renderer/GL/Shader.cpp

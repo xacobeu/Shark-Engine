@@ -51,7 +51,23 @@ void Renderer::render(const Scene &scene, int width, int height) {
                     Matrix4::scale(transform.scale);
 
     Matrix4 mvp = viewProj * model;
+
+    bool hasTexture = (entity->getTexture() != nullptr);
+    if (hasTexture) {
+      entity->getTexture()->bind(0);
+    }
+
+    defaultShader->bind();
+    defaultShader->setInt("u_HasTexture", hasTexture ? 1 : 0);
+    defaultShader->setInt("u_Texture", 0);
+    Vector4 color = entity->getColor();
+    defaultShader->setVec4("u_Color", color.x, color.y, color.z, color.w);
+
     submit(buffers.vao, buffers.indexCount, defaultShader, mvp);
+
+    if (hasTexture) {
+      entity->getTexture()->unbind();
+    }
   }
 }
 
