@@ -2,6 +2,8 @@ add_library(SharkEngine STATIC
     src/Application.cpp
     src/Window.cpp
     src/renderer/Renderer.cpp
+    src/renderer/scene/OrbitCamera.cpp
+    src/renderer/scene/FlyingCamera.cpp
     src/renderer/Texture.cpp
     src/renderer/geometry/Mesh.cpp
     src/renderer/geometry/MeshFactory.cpp

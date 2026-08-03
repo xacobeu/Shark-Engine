@@ -2,6 +2,7 @@ add_executable(SharkEngineDemo
     src/Main.cpp
     src/layers/SpinningCubeExample.cpp
     src/layers/RayTracingExample.cpp
+    src/layers/BoxExample.cpp
 )
 
 target_compile_options(SharkEngineDemo PRIVATE ${SHARK_COMPILER_OPTIONS})

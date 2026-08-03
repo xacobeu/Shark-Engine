@@ -36,4 +36,11 @@ public:
         Vector3 target = transform.position + direction;
         return Matrix4::lookAt(transform.position, target, {0, 1, 0});
     }
+
+    void update(Application* app, float deltaTime) override;
+
+private:
+    bool isDragging = false;
+    double lastMouseX = 0.0;
+    double lastMouseY = 0.0;
 };

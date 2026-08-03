@@ -36,7 +36,17 @@ public:
         return Matrix4::lookAt(pos, target, {0, 1, 0});
     }
 
+    void update(Application* app, float deltaTime) override;
+
 private:
     Vector3 target{0.0f, 0.0f, 0.0f};
     float distance = 10.0f;
+
+    bool isDragging = false;
+    double lastMouseX = 0.0;
+    double lastMouseY = 0.0;
+
+    bool isPanning = false;
+    double lastPanX = 0.0;
+    double lastPanY = 0.0;
 };

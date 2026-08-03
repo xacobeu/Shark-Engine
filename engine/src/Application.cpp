@@ -15,7 +15,8 @@ static void emscriptenLoop(void* arg) {
 
 Application::Application(const Config& config) : window(config.width, config.height, config.title) {
     renderer.init();
-};
+    window.setVSync(config.vsync);
+}
 
 void Application::run() {
 #ifdef __EMSCRIPTEN__
@@ -35,6 +36,12 @@ void Application::runStep() {
 
     window.beginImGuiFrame();
 
+    if (activeScene) {
+        if (auto camera = activeScene->getActiveCamera()) {
+            camera->update(this, deltaTime);
+        }
+    }
+
     for (auto& layer : layers) {
         layer->onUpdate(deltaTime);
     }
@@ -47,6 +54,7 @@ void Application::runStep() {
 
     window.endImGuiFrame();
     window.swapBuffers();
+    window.resetScroll();
 }
 
 void Application::close() {

@@ -11,6 +11,7 @@ struct Config {
     int width = 800;
     int height = 600;
     const char* title = "Application";
+    bool vsync = true;
 };
 
 class Application {
@@ -39,7 +40,16 @@ public:
     double getCursorX() const { return window.getCursorX(); }
     double getCursorY() const { return window.getCursorY(); }
 
+    bool isKeyPressed(int key) const { return window.isKeyPressed(key); }
+    bool isMouseButtonPressed(int button) const { return window.isMouseButtonPressed(button); }
+    double getScrollX() const { return window.getScrollX(); }
+    double getScrollY() const { return window.getScrollY(); }
+
+    void setScene(Scene* scene) { activeScene = scene; }
+    [[nodiscard]] Scene* getScene() const { return activeScene; }
+
 private:
+    Scene* activeScene = nullptr;
     Config config;
 
     Renderer renderer;

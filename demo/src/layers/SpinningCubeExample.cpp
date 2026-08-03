@@ -9,16 +9,16 @@
 void SpinningCubeExample::onAttach() {
 	std::cout << "[DEBUG] SpinningCubeExample layer attached" << std::endl;
 
+	app->setScene(&scene);
+
 	camera = scene.add<OrbitCamera>()
 		->setDistance(6.0f);
-
-	auto tex = std::make_shared<Texture>("res/textures/scifi_crate.png");
 
 	cube = scene.add<Entity>()
 		->setMesh(std::make_shared<Mesh>(MeshFactory::cube()))
 		->setScale({1.0f, 1.0f, 1.0f})
 		->setPosition({0.0f, 0.0f, 0.0f})
-		->setTexture(tex);
+		->setTexture(std::make_shared<Texture>("res/textures/scifi_crate.png"));
 }
 
 void SpinningCubeExample::onUpdate(float deltaTime) {

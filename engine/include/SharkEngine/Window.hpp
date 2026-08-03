@@ -30,15 +30,24 @@ public:
     void getDimensions(int& width, int& height) const;
 
     bool isKeyPressed(int key) const;
+    bool isMouseButtonPressed(int button) const;
 
     double getCursorX() const;
     double getCursorY() const;
 
+    double getScrollX() const { return scrollX; }
+    double getScrollY() const { return scrollY; }
+    void resetScroll() { scrollX = 0.0; scrollY = 0.0; }
+
     int getWidth() const;
     int getHeight() const;
 
+    void setVSync(bool enabled);
+
 private:
     GLFWwindow* window = nullptr;
+    double scrollX = 0.0;
+    double scrollY = 0.0;
 
     static void _mouseButtonCallback(GLFWwindow* win, int button, int action, int mods);
     static void _cursorPosCallback(GLFWwindow* win, double x, double y);

@@ -44,9 +44,6 @@ Window::Window(int width, int height, const char* title) {
     }
 #endif
 
-#ifndef __EMSCRIPTEN__
-    glfwSwapInterval(1);
-#endif
     glfwSetWindowUserPointer(window, this);
 
     glfwSetKeyCallback(window, _keyCallback);
@@ -133,7 +130,11 @@ void Window::_scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
     }
 
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
-    if (window && window->events.onScroll) window->events.onScroll(xoffset, yoffset);
+    if (window) {
+        window->scrollX += xoffset;
+        window->scrollY += yoffset;
+        if (window->events.onScroll) window->events.onScroll(xoffset, yoffset);
+    }
 }
 
 // Keyboard callbacks
@@ -193,6 +194,10 @@ bool Window::isKeyPressed(int key) const {
     return glfwGetKey(window, key) == GLFW_PRESS;
 }
 
+bool Window::isMouseButtonPressed(int button) const {
+    return glfwGetMouseButton(window, button) == GLFW_PRESS;
+}
+
 double Window::getCursorX() const {
     double x, y;
     glfwGetCursorPos(window, &x, &y);
@@ -219,4 +224,10 @@ int Window::getHeight() const {
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
     return h;
+}
+
+void Window::setVSync(bool enabled) {
+#ifndef __EMSCRIPTEN__
+    glfwSwapInterval(enabled ? 1 : 0);
+#endif
 }

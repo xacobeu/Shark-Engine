@@ -4,6 +4,8 @@
 #include <SharkEngine/util/Matrix4.hpp>
 #include <SharkEngine/util/Vector.hpp>
 
+class Application;
+
 class Camera : public Node {
 public:
     // Overrides.
@@ -30,6 +32,8 @@ public:
     [[nodiscard]] virtual Matrix4 getViewMatrix() const {
         return Matrix4::lookAt(transform.position, {0, 0, 0}, {0, 1, 0});
     }
+
+    virtual void update(Application* /*app*/, float /*deltaTime*/) {}
 
 private:
     float fov = 45.0f;
