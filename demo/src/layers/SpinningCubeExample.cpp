@@ -8,28 +8,26 @@
 
 void SpinningCubeExample::onAttach() {
 	std::cout << "[DEBUG] SpinningCubeExample layer attached" << std::endl;
-	app->getCamera().distance = 6.0f;
+
+	camera = scene.add<OrbitCamera>()
+		->setDistance(6.0f);
+
+	cube = scene.add<Entity>()
+		->setMesh(std::make_shared<Mesh>(MeshFactory::cube()))
+		->setScale({1.0f, 1.0f, 1.0f})
+		->setPosition({0.0f, 0.0f, 0.0f});
 }
 
 void SpinningCubeExample::onUpdate(float deltaTime) {
 	elapsed += deltaTime;
 	++frameCount;
 
-	if (created) {
-		cube.transform.rotationDeg.y += deltaTime * 35.0f;
-	}
+	cube->setRotation({0.0f, cube->getRotation().y + deltaTime * 35.0f, 0.0f});
 }
 
 void SpinningCubeExample::onRender(Renderer &renderer) {
-	if (!created) {
-		cube = renderer.createGameObject(MeshFactory::cube());
-		cube.transform.scale = {1.0f, 1.0f, 1.0f};
-		cube.transform.position = {0.0f, 0.0f, 0.0f};
-		created = true;
-	}
 
-	renderer.beginScene(app->getCamera(), app->getWidth(), app->getHeight());
-	renderer.submit(cube);
+	renderer.render(scene, app->getWidth(), app->getHeight());
 
 	ImGui::Begin("DEBUG");
 	ImGui::Text("Elapsed: %.2f s", elapsed);

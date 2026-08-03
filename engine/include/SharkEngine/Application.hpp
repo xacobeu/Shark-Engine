@@ -2,7 +2,6 @@
 
 #include <SharkEngine/renderer/Renderer.hpp>
 #include <SharkEngine/Window.hpp>
-#include <SharkEngine/renderer/Camera.hpp>
 
 #include <memory>
 #include <vector>
@@ -37,7 +36,6 @@ public:
 
     void updateTime(float now);
 
-    Camera& getCamera() { return camera; }
     double getCursorX() const { return window.getCursorX(); }
     double getCursorY() const { return window.getCursorY(); }
 
@@ -46,7 +44,6 @@ private:
 
     Renderer renderer;
     Window window;
-    Camera camera;
 
     std::vector<std::unique_ptr<Layer>> layers;
 

@@ -48,10 +48,12 @@ _run-web:
 clean:
     -Stop-Process -Name SharkEngineDemo -Force -ErrorAction SilentlyContinue
     -Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*emrun*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    -Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*http.server*" -and $_.Name -like "*python*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     cmake -E rm -rf build compile_commands.json .clangd
 
 [unix]
 clean:
     -pkill -f SharkEngineDemo
     -pkill -f emrun
+    -pkill -f "python.*http.server"
     cmake -E rm -rf build compile_commands.json .clangd

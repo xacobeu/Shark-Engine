@@ -19,31 +19,40 @@ void Renderer::begin(int width, int height) {
   glEnable(GL_DEPTH_TEST);
 }
 
-void Renderer::beginScene(const Camera &camera, int width, int height,
-                          float fov) {
+void Renderer::render(const Scene &scene, int width, int height) {
   init();
+
+  Camera* camera = scene.getActiveCamera();
+  if (!camera) {
+    return;
+  }
 
   float safeHeight = static_cast<float>(height);
   if (safeHeight < 1.0f)
     safeHeight = 1.0f;
   float aspect = static_cast<float>(width) / safeHeight;
 
-  Matrix4 projection = camera.getProjectionMatrix(aspect, fov);
-  Matrix4 view = camera.getViewMatrix();
-  sceneViewProjection = projection * view;
-  sceneBegun = true;
-}
+  Matrix4 projection = camera->getProjectionMatrix(aspect);
+  Matrix4 view = camera->getViewMatrix();
+  Matrix4 viewProj = projection * view;
 
-Renderer::GameObject Renderer::createGameObject(const Mesh &mesh) const {
-  GameObject object;
-  object.mesh = std::make_shared<Mesh>(mesh);
-  return object;
-}
+  for (const auto &entity : scene.getEntities()) {
+    if (!entity || !entity->getMesh()) {
+      continue;
+    }
 
-Renderer::GameObject Renderer::createGameObject(Mesh &&mesh) const {
-  GameObject object;
-  object.mesh = std::make_shared<Mesh>(std::move(mesh));
-  return object;
+    const auto &buffers = uploadMeshIfNeeded(entity->getMesh());
+
+    const Transform &transform = entity->getTransform();
+    Matrix4 model = Matrix4::translate(transform.position) *
+                    Matrix4::rotateZ(transform.rotationDeg.z) *
+                    Matrix4::rotateY(transform.rotationDeg.y) *
+                    Matrix4::rotateX(transform.rotationDeg.x) *
+                    Matrix4::scale(transform.scale);
+
+    Matrix4 mvp = viewProj * model;
+    submit(buffers.vao, buffers.indexCount, defaultShader, mvp);
+  }
 }
 
 const Renderer::MeshBuffers &
@@ -84,23 +93,6 @@ Renderer::uploadMeshIfNeeded(const std::shared_ptr<Mesh> &mesh) {
   auto [insertedIt, inserted] = meshCache.emplace(key, std::move(buffers));
   (void)inserted;
   return insertedIt->second;
-}
-
-void Renderer::submit(const GameObject &object) {
-  if (!sceneBegun || !object.visible || !object.mesh) {
-    return;
-  }
-
-  const auto &buffers = uploadMeshIfNeeded(object.mesh);
-
-  Matrix4 model = Matrix4::translate(object.transform.position) *
-                  Matrix4::rotateZ(object.transform.rotationDeg.z) *
-                  Matrix4::rotateY(object.transform.rotationDeg.y) *
-                  Matrix4::rotateX(object.transform.rotationDeg.x) *
-                  Matrix4::scale(object.transform.scale);
-
-  Matrix4 mvp = sceneViewProjection * model;
-  submit(buffers.vao, buffers.indexCount, defaultShader, mvp);
 }
 
 void Renderer::submit(const std::shared_ptr<GL::VertexArray> &vao,

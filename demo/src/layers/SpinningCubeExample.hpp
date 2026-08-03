@@ -2,6 +2,7 @@
 
 #include <SharkEngine/Layer.hpp>
 #include <SharkEngine/renderer/Renderer.hpp>
+#include <SharkEngine/renderer/scene/Scene.hpp>
 
 class SpinningCubeExample : public Layer {
 public:
@@ -10,8 +11,9 @@ public:
     void onRender(Renderer& renderer) override;
 
 private:
-    Renderer::GameObject cube;
-    bool created = false;
+    Scene scene;
+    Entity* cube = nullptr;
+    OrbitCamera* camera = nullptr;
     float elapsed = 0.0f;
     int frameCount = 0;
 };
