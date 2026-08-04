@@ -1,10 +1,6 @@
-#include "SpinningCubeExample.hpp"
-
 #include "imgui.h"
-#include <SharkEngine/Application.hpp>
-#include <SharkEngine/renderer/geometry/MeshFactory.hpp>
-
 #include <iostream>
+#include "SpinningCubeExample.hpp"
 
 void SpinningCubeExample::onAttach() {
 	std::cout << "[DEBUG] SpinningCubeExample layer attached" << std::endl;

@@ -2,17 +2,30 @@ add_executable(SharkEngineDemo
     src/Main.cpp
     src/layers/SpinningCubeExample.cpp
     src/layers/RayTracingExample.cpp
-    src/layers/BoxExample.cpp
 )
 
 target_compile_options(SharkEngineDemo PRIVATE ${SHARK_COMPILER_OPTIONS})
 target_compile_features(SharkEngineDemo PRIVATE cxx_std_20)
+
+
+if(SHARK_ENABLE_UNITY_BUILD)
+    set_target_properties(SharkEngineDemo PROPERTIES UNITY_BUILD ON)
+endif()
 
 target_link_libraries(SharkEngineDemo PRIVATE
     SharkEngine
 )
 
 if(EMSCRIPTEN)
+    # Shaders are preloaded into the generated .data file.  Make the link step
+    # depend on them so a shader-only edit refreshes the browser artifact.
+    set_property(TARGET SharkEngineDemo APPEND PROPERTY LINK_DEPENDS
+        "${SharkEngine_SOURCE_DIR}/engine/res/shaders/default.vert.glsl"
+        "${SharkEngine_SOURCE_DIR}/engine/res/shaders/default.frag.glsl"
+        "${SharkEngine_SOURCE_DIR}/engine/res/shaders/raytrace.vert.glsl"
+        "${SharkEngine_SOURCE_DIR}/engine/res/shaders/raytrace.frag.glsl"
+    )
+
     # Output SharkEngineDemo.html, SharkEngineDemo.js, and SharkEngineDemo.wasm
     set_target_properties(SharkEngineDemo PROPERTIES SUFFIX ".html")
 
@@ -25,13 +38,13 @@ if(EMSCRIPTEN)
     )
 
 else()
-    # Copy resources to build output dir
-    add_custom_command(TARGET SharkEngineDemo POST_BUILD
+    add_custom_target(CopyEngineResources ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${SharkEngine_SOURCE_DIR}/engine/res"
             "$<TARGET_FILE_DIR:SharkEngineDemo>/res"
         COMMENT "Copying engine resources to output directory"
     )
+    add_dependencies(SharkEngineDemo CopyEngineResources)
 
     # Enable app-local dependency copying for vcpkg on Windows
     if(WIN32)

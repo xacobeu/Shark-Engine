@@ -1,24 +1,43 @@
-add_library(SharkEngine STATIC
-    src/Application.cpp
-    src/Window.cpp
-    src/renderer/Renderer.cpp
-    src/renderer/backends/IRenderDevice.cpp
-    src/renderer/scene/OrbitCamera.cpp
-    src/renderer/scene/FlyingCamera.cpp
-    src/renderer/backends/opengl/VertexBuffer.cpp
-    src/renderer/backends/opengl/IndexBuffer.cpp
-    src/renderer/backends/opengl/Shader.cpp
-    src/renderer/backends/opengl/Texture.cpp
-    src/renderer/backends/opengl/RenderDevice.cpp
-    src/renderer/geometry/Mesh.cpp
-    src/renderer/geometry/MeshFactory.cpp
-)
+add_library(SharkEngine)
 
 target_compile_options(SharkEngine PRIVATE ${SHARK_COMPILER_OPTIONS})
 
-target_include_directories(SharkEngine PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+target_compile_definitions(SharkEngine PUBLIC SOL_ALL_SAFETIES_ON=1)
+
+if(SHARK_ENABLE_UNITY_BUILD)
+    set_target_properties(SharkEngine PROPERTIES UNITY_BUILD OFF)
+endif()
+
+# We specify all .cppm module files in the PUBLIC CXX_MODULES file set
+target_sources(SharkEngine
+    PUBLIC
+        FILE_SET CXX_MODULES
+        BASE_DIRS src
+        FILES
+            src/util/Math.cppm
+            src/renderer/geometry/Vertex.cppm
+            src/renderer/geometry/Mesh.cppm
+            src/renderer/geometry/MeshFactory.cppm
+            src/renderer/backends/RenderDeviceAbstractions.cppm
+            src/renderer/backends/opengl/GLObject.cppm
+            src/renderer/backends/opengl/GLVertexBuffer.cppm
+            src/renderer/backends/opengl/GLIndexBuffer.cppm
+            src/renderer/backends/opengl/GLShader.cppm
+            src/renderer/backends/opengl/GLTexture.cppm
+            src/renderer/backends/opengl/GLRenderDevice.cppm
+            src/renderer/scene/Node.cppm
+            src/renderer/scene/node_types/SceneNodes.cppm
+            src/renderer/scene/Scene.cppm
+            src/renderer/Renderer.cppm
+            src/Layer.cppm
+            src/Window.cppm
+            src/ScriptLayer.cppm
+            src/Application.cppm
+            src/SharkEngine.cppm
+)
+
+target_sources(SharkEngine PRIVATE
+    src/renderer/scene/node_types/SceneNodes.cpp
 )
 
 target_link_libraries(SharkEngine PUBLIC
@@ -27,10 +46,18 @@ target_link_libraries(SharkEngine PUBLIC
     glad::glad
     OpenGL::GL
     nlohmann_json::nlohmann_json
+    sol2::sol2
 )
 
 if(EMSCRIPTEN)
-    target_link_libraries(SharkEngine PUBLIC stb)
+    target_link_libraries(SharkEngine PUBLIC stb lua_static)
+else()
+    if(TARGET Lua::Lua)
+        target_link_libraries(SharkEngine PUBLIC Lua::Lua)
+    else()
+        target_link_libraries(SharkEngine PUBLIC ${LUA_LIBRARIES})
+        target_include_directories(SharkEngine PUBLIC $<BUILD_INTERFACE:${LUA_INCLUDE_DIR}>)
+    endif()
 endif()
 
 # Install targets (disabled for WebAssembly)
@@ -40,10 +67,8 @@ if(NOT EMSCRIPTEN)
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin
+        FILE_SET CXX_MODULES DESTINATION include
     )
-
-    # Install headers preserving folder structure
-    install(DIRECTORY include/SharkEngine DESTINATION include)
 
     # Configure package config for find_package
     include(CMakePackageConfigHelpers)

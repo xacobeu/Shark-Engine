@@ -15,7 +15,9 @@
     },
     "stb",
     "earcut-hpp",
-    "nlohmann-json"
+    "nlohmann-json",
+    "lua",
+    "sol2"
   ],
   "builtin-baseline": "40f3c709db80acf154ac4b17a1f83c564ebd022e"
 }

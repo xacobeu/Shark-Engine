@@ -1,8 +1,6 @@
 #pragma once
 
-#include <SharkEngine/Layer.hpp>
-#include <SharkEngine/renderer/Renderer.hpp>
-#include <SharkEngine/renderer/scene/Scene.hpp>
+import SharkEngine;
 
 class SpinningCubeExample : public Layer {
 public:

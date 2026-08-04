@@ -1,12 +1,7 @@
 #pragma once
 
-#include <SharkEngine/Layer.hpp>
-#include <SharkEngine/renderer/Renderer.hpp>
-#include <SharkEngine/renderer/backends/IRenderDevice.hpp>
-#include <SharkEngine/renderer/backends/IVertexBuffer.hpp>
-#include <SharkEngine/renderer/backends/IShader.hpp>
-#include <SharkEngine/util/Vector.hpp>
 #include <memory>
+import SharkEngine;
 
 class RayTracingExample : public Layer {
 public:
@@ -23,7 +18,6 @@ private:
     bool enableReflections = true;
     float reflectionStrength = 0.2f;
     
-    // Scene objects
     Vector3 sphere1Pos{0.0f, 0.0f, -5.0f};
     float sphere1Radius = 1.0f;
     Vector3 cameraPos{0.0f, 0.0f, 0.0f};

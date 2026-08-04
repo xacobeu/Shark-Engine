@@ -1,13 +1,19 @@
-#include <SharkEngine/Application.hpp>
+#include <memory>
 #include "layers/RayTracingExample.hpp"
-#include "layers/SpinningCubeExample.hpp"
-#include "layers/BoxExample.hpp"
+import SharkEngine;
 
 int main() {
-    Application app{{ .width = 960, .height = 640, .title = "Example", .vsync = false }};
+    Application app{
+        Config{
+            .width = 960,
+            .height = 640,
+            .title = "Example",
+            .vsync = false,
+            .api = GraphicsAPI::OpenGL
+        }
+    };
 
-    // app.push(std::make_unique<BoxExample>());
-    // app.push(std::make_unique<SpinningCubeExample>());
+    //app.push(std::make_unique<ScriptLayer>("res/scripts/layer.lua"));
     app.push(std::make_unique<RayTracingExample>());
     app.run();
 }
