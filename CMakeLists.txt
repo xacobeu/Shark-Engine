@@ -70,6 +70,20 @@ else()
     )
     FetchContent_MakeAvailable(imgui_src)
 
+    add_library(glfw_dummy INTERFACE)
+    target_compile_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
+    target_link_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
+    add_library(glfw ALIAS glfw_dummy)
+
+    add_library(opengl_dummy INTERFACE)
+    target_compile_options(opengl_dummy INTERFACE -sFULL_ES3=1)
+    target_link_options(opengl_dummy INTERFACE -sFULL_ES3=1)
+    add_library(OpenGL::GL ALIAS opengl_dummy)
+
+    add_library(glad_dummy INTERFACE)
+    target_compile_definitions(glad_dummy INTERFACE SHARK_NO_GLAD)
+    add_library(glad::glad ALIAS glad_dummy)
+
     add_library(imgui STATIC
         ${imgui_src_SOURCE_DIR}/imgui.cpp
         ${imgui_src_SOURCE_DIR}/imgui_demo.cpp
@@ -83,19 +97,8 @@ else()
         ${imgui_src_SOURCE_DIR}
         ${imgui_src_SOURCE_DIR}/backends
     )
+    target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
     add_library(imgui::imgui ALIAS imgui)
-
-    add_library(glfw_dummy INTERFACE)
-    target_link_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
-    add_library(glfw ALIAS glfw_dummy)
-
-    add_library(opengl_dummy INTERFACE)
-    target_link_options(opengl_dummy INTERFACE -sFULL_ES3=1)
-    add_library(OpenGL::GL ALIAS opengl_dummy)
-
-    add_library(glad_dummy INTERFACE)
-    target_compile_definitions(glad_dummy INTERFACE SHARK_NO_GLAD)
-    add_library(glad::glad ALIAS glad_dummy)
 
     FetchContent_Declare(
         stb_src
