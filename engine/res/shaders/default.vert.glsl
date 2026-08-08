@@ -8,11 +8,7 @@ out vec3 v_FragPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 
-layout(std140) uniform GlobalParams {
-    mat4 u_Transform;
-    vec4 u_Color;
-    int u_HasTexture;
-};
+uniform mat4 u_Transform;
 
 void main() {
     v_FragPos = aPos;

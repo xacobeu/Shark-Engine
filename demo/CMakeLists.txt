@@ -8,9 +8,15 @@ target_compile_options(SharkEngineDemo PRIVATE ${SHARK_COMPILER_OPTIONS})
 target_compile_features(SharkEngineDemo PRIVATE cxx_std_20)
 
 
-if(SHARK_ENABLE_UNITY_BUILD)
-    set_target_properties(SharkEngineDemo PROPERTIES UNITY_BUILD ON)
-endif()
+set_target_properties(SharkEngineDemo PROPERTIES UNITY_BUILD ON)
+
+target_precompile_headers(SharkEngineDemo PRIVATE
+    <memory>
+    <vector>
+    <string>
+    <SharkEngine/Application.hpp>
+    <SharkEngine/renderer/Renderer.hpp>
+)
 
 target_link_libraries(SharkEngineDemo PRIVATE
     SharkEngine
@@ -32,6 +38,9 @@ if(EMSCRIPTEN)
     target_link_options(SharkEngineDemo PRIVATE
         "-sUSE_GLFW=3"
         "-sFULL_ES3=1"
+        "-sUSE_WEBGL2=1"
+        "-sMIN_WEBGL_VERSION=2"
+        "-sMAX_WEBGL_VERSION=2"
         "-sALLOW_MEMORY_GROWTH=1"
         "--preload-file" "${SharkEngine_SOURCE_DIR}/engine/res@/res"
         "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html"

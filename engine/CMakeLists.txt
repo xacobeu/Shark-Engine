@@ -4,40 +4,80 @@ target_compile_options(SharkEngine PRIVATE ${SHARK_COMPILER_OPTIONS})
 
 target_compile_definitions(SharkEngine PUBLIC SOL_ALL_SAFETIES_ON=1)
 
-if(SHARK_ENABLE_UNITY_BUILD)
-    set_target_properties(SharkEngine PROPERTIES UNITY_BUILD OFF)
+set_target_properties(SharkEngine PROPERTIES UNITY_BUILD ON)
+
+if(NOT EMSCRIPTEN)
+    target_precompile_headers(SharkEngine PRIVATE <glad/glad.h>)
 endif()
 
-# We specify all .cppm module files in the PUBLIC CXX_MODULES file set
-target_sources(SharkEngine
-    PUBLIC
-        FILE_SET CXX_MODULES
-        BASE_DIRS src
-        FILES
-            src/util/Math.cppm
-            src/renderer/geometry/Vertex.cppm
-            src/renderer/geometry/Mesh.cppm
-            src/renderer/geometry/MeshFactory.cppm
-            src/renderer/backends/RenderDeviceAbstractions.cppm
-            src/renderer/backends/opengl/GLObject.cppm
-            src/renderer/backends/opengl/GLVertexBuffer.cppm
-            src/renderer/backends/opengl/GLIndexBuffer.cppm
-            src/renderer/backends/opengl/GLShader.cppm
-            src/renderer/backends/opengl/GLTexture.cppm
-            src/renderer/backends/opengl/GLRenderDevice.cppm
-            src/renderer/scene/Node.cppm
-            src/renderer/scene/node_types/SceneNodes.cppm
-            src/renderer/scene/Scene.cppm
-            src/renderer/Renderer.cppm
-            src/Layer.cppm
-            src/Window.cppm
-            src/ScriptLayer.cppm
-            src/Application.cppm
-            src/SharkEngine.cppm
+target_precompile_headers(SharkEngine PRIVATE
+    <memory>
+    <vector>
+    <string>
+    <unordered_map>
+    <functional>
+    <stdexcept>
+    <iostream>
+    <filesystem>
+    <imgui.h>
+    <GLFW/glfw3.h>
+    <nlohmann/json.hpp>
+    <sol/sol.hpp>
 )
 
-target_sources(SharkEngine PRIVATE
-    src/renderer/scene/node_types/SceneNodes.cpp
+target_include_directories(SharkEngine PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_sources(SharkEngine
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS src
+        FILES
+            src/SharkEngine/Application.hpp
+            src/SharkEngine/Layer.hpp
+            src/SharkEngine/ScriptLayer.hpp
+            src/SharkEngine/Window.hpp
+            src/SharkEngine/renderer/Renderer.hpp
+            src/SharkEngine/renderer/backends/IIndexBuffer.hpp
+            src/SharkEngine/renderer/backends/IRenderDevice.hpp
+            src/SharkEngine/renderer/backends/IShader.hpp
+            src/SharkEngine/renderer/backends/ITexture.hpp
+            src/SharkEngine/renderer/backends/IVertexBuffer.hpp
+            src/SharkEngine/renderer/backends/opengl/IndexBuffer.hpp
+            src/SharkEngine/renderer/backends/opengl/Object.hpp
+            src/SharkEngine/renderer/backends/opengl/RenderDevice.hpp
+            src/SharkEngine/renderer/backends/opengl/Shader.hpp
+            src/SharkEngine/renderer/backends/opengl/Texture.hpp
+            src/SharkEngine/renderer/backends/opengl/VertexBuffer.hpp
+            src/SharkEngine/renderer/geometry/Mesh.hpp
+            src/SharkEngine/renderer/geometry/MeshFactory.hpp
+            src/SharkEngine/renderer/geometry/Vertex.hpp
+            src/SharkEngine/renderer/scene/Node.hpp
+            src/SharkEngine/renderer/scene/Scene.hpp
+            src/SharkEngine/renderer/scene/node_types/Camera.hpp
+            src/SharkEngine/renderer/scene/node_types/Entity.hpp
+            src/SharkEngine/renderer/scene/node_types/FlyingCamera.hpp
+            src/SharkEngine/renderer/scene/node_types/Light.hpp
+            src/SharkEngine/renderer/scene/node_types/OrbitCamera.hpp
+            src/SharkEngine/util/Matrix4.hpp
+            src/SharkEngine/util/Vector.hpp
+    PRIVATE
+        src/SharkEngine/Application.cpp
+        src/SharkEngine/Window.cpp
+        src/SharkEngine/ScriptLayer.cpp
+        src/SharkEngine/renderer/Renderer.cpp
+        src/SharkEngine/renderer/backends/IRenderDevice.cpp
+        src/SharkEngine/renderer/backends/opengl/IndexBuffer.cpp
+        src/SharkEngine/renderer/backends/opengl/RenderDevice.cpp
+        src/SharkEngine/renderer/backends/opengl/Shader.cpp
+        src/SharkEngine/renderer/backends/opengl/Texture.cpp
+        src/SharkEngine/renderer/backends/opengl/VertexBuffer.cpp
+        src/SharkEngine/renderer/geometry/Mesh.cpp
+        src/SharkEngine/renderer/geometry/MeshFactory.cpp
+        src/SharkEngine/renderer/scene/FlyingCamera.cpp
+        src/SharkEngine/renderer/scene/OrbitCamera.cpp
 )
 
 target_link_libraries(SharkEngine PUBLIC
@@ -67,7 +107,8 @@ if(NOT EMSCRIPTEN)
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin
-        FILE_SET CXX_MODULES DESTINATION include
+        INCLUDES DESTINATION include
+        FILE_SET HEADERS DESTINATION include
     )
 
     # Configure package config for find_package
@@ -89,3 +130,4 @@ if(NOT EMSCRIPTEN)
         DESTINATION lib/cmake/SharkEngine
     )
 endif()
+

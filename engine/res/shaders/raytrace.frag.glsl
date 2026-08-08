@@ -5,16 +5,14 @@ in vec2 v_TexCoord;
 
 out vec4 fragColor;
 
-layout(std140) uniform RaytraceParams {
-    float u_AspectRatio;
-    float u_Time;
-    vec3 u_CameraPos;
-    vec3 u_SpherePos;
-    float u_SphereRadius;
-    int u_EnableShadows;
-    int u_EnableReflections;
-    float u_ReflectionStrength;
-};
+uniform float u_AspectRatio;
+uniform float u_Time;
+uniform vec3 u_CameraPos;
+uniform vec3 u_SpherePos;
+uniform float u_SphereRadius;
+uniform int u_EnableShadows;
+uniform int u_EnableReflections;
+uniform float u_ReflectionStrength;
 
 struct Sphere {
     vec3 center;
