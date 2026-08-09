@@ -9,15 +9,8 @@ build target=default_target: (update-clangd target)
 
 # Configure clangd compilation database pointer
 update-clangd target=default_target:
-    @just _clangd-{{target}}
-
-[private]
-_clangd-desktop:
-    @powershell -NoProfile -Command "Set-Content -Path .clangd -Value 'CompilationDatabase: build/desktop-dev`n`nCompileFlags:`n  Add:`n    - -Wall`n    - -Wextra`n    - -Wpedantic`n    - -Wshadow`n    - -Wconversion`n    - -Wsign-conversion`n    - -Wold-style-cast`n    - -Wnon-virtual-dtor`n    - -Wunused`n    - -Wnull-dereference`n    - -Wdouble-promotion`n    - -Wextra-semi`n  Remove:`n    - /W*`n    - /w*`n    - /external:*' -Encoding utf8"
-
-[private]
-_clangd-web:
-    @powershell -NoProfile -Command "Set-Content -Path .clangd -Value 'CompilationDatabase: build/web-release`n`nCompileFlags:`n  Add:`n    - -Wall`n    - -Wextra`n    - -Wpedantic`n    - -Wshadow`n    - -Wconversion`n    - -Wsign-conversion`n    - -Wold-style-cast`n    - -Wnon-virtual-dtor`n    - -Wunused`n    - -Wnull-dereference`n    - -Wdouble-promotion`n    - -Wextra-semi`n  Remove:`n    - /W*`n    - /w*`n    - /external:*' -Encoding utf8"
+    @powershell -NoProfile -Command "Set-Content -Path .clangd -Value 'CompilationDatabase: build/{{ if target == 'web' { 'web-release' } else { 'desktop-dev' } }}' -Encoding utf8"
+    -cmake -E copy_if_different build/{{ if target == 'web' { 'web-release' } else { 'desktop-dev' } }}/compile_commands.json compile_commands.json
 
 # Run target: `just run` or `just run web`
 run target=default_target: (build target)
