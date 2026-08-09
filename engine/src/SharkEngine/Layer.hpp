@@ -5,22 +5,22 @@ class Application;
 class Renderer;
 
 class Layer {
-public:
+  public:
     virtual ~Layer() = default;
 
-    virtual void onAttach() {}
-    virtual void onDetach() {}
+    virtual void onAttach() { }
+    virtual void onDetach() { }
 
-    virtual void onUpdate(float) {}
-    virtual void onRender(Renderer&) {}
+    virtual void onUpdate(float) { }
+    virtual void onRender(Renderer &) { }
 
-protected:
-    Application* app = nullptr;
+  protected:
+    Application *app = nullptr;
 
     friend class Application;
 };
 
-struct Unique {};
+struct Unique { };
 
-template<typename T>
+template <typename T>
 concept UniqueLayer = std::is_base_of_v<Unique, T>;

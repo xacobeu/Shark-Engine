@@ -4,9 +4,9 @@
 
 std::unique_ptr<IRenderDevice> IRenderDevice::create(GraphicsAPI api) {
     switch (api) {
-        case GraphicsAPI::OpenGL:
-            return std::make_unique<GL::RenderDevice>();
-        default:
-            throw std::runtime_error("Unsupported Graphics API!");
+    case GraphicsAPI::OpenGL:
+        return std::make_unique<GL::RenderDevice>();
+    default:
+        throw std::runtime_error("Unsupported Graphics API!");
     }
 }

@@ -1,16 +1,18 @@
+#include <GLFW/glfw3.h>
 #include <SharkEngine/Application.hpp>
 #include <SharkEngine/renderer/scene/node_types/OrbitCamera.hpp>
-#include <GLFW/glfw3.h>
 #include <cmath>
 #include <numbers>
 
-void OrbitCamera::update(Application* app, float) {
+void OrbitCamera::update(Application *app, float) {
     // Zoom
     double scrollY = app->getScrollY();
     if (scrollY != 0.0) {
         distance -= static_cast<float>(scrollY) * 0.5f;
-        if (distance < 1.0f) distance = 1.0f;
-        if (distance > 100.0f) distance = 100.0f;
+        if (distance < 1.0f)
+            distance = 1.0f;
+        if (distance > 100.0f)
+            distance = 100.0f;
     }
 
     double mouseX = app->getCursorX();
@@ -31,8 +33,10 @@ void OrbitCamera::update(Application* app, float) {
         rot.y += static_cast<float>(dx) * 0.25f;
         rot.x += static_cast<float>(dy) * 0.25f;
 
-        if (rot.x > 89.0f) rot.x = 89.0f;
-        if (rot.x < -89.0f) rot.x = -89.0f;
+        if (rot.x > 89.0f)
+            rot.x = 89.0f;
+        if (rot.x < -89.0f)
+            rot.x = -89.0f;
 
         setRotation(rot);
 
@@ -59,7 +63,7 @@ void OrbitCamera::update(Application* app, float) {
         Vector3 up = { 0.0f, 1.0f, 0.0f };
 
         float panSpeed = distance * 0.002f;
-        
+
         target = target - right * (static_cast<float>(dx) * panSpeed) + up * (static_cast<float>(dy) * panSpeed);
 
         lastPanX = mouseX;

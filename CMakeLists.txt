@@ -19,13 +19,61 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 option(SHARK_ENABLE_PCH "Enable Precompiled Headers" ON)
 option(SHARK_ENABLE_UNITY_BUILD "Enable Unity Builds" ON)
+option(SHARK_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
-# Common compiler warnings across desktop and web
+# Strict compiler warnings for code quality, safety, and modern C++ style
+set(SHARK_MSVC_WARNINGS
+    /W4                  # Level 4 warnings
+    /permissive-         # Enforce standard conformance
+    /external:anglebrackets # Treat <...> headers as external
+    /external:W0         # Ignore warnings in external headers
+    /w14242              # conversion from 'type1' to 'type2', possible loss of data
+    /w14254              # conversion from 'type1:field_bits' to 'type2:field_bits'
+    /w14263              # member function does not override base class virtual function
+    /w14265              # class has virtual functions, but destructor is not virtual
+    /w14287              # unsigned/negative constant mismatch
+    /w14296              # expression is always true/false
+    /w14311              # pointer truncation from 'type1' to 'type2'
+    /w14389              # signed/unsigned mismatch in comparison
+    /w14545              # comma expression missing argument list
+    /w14546              # function call before comma missing argument list
+    /w14547              # operator before comma has no effect
+    /w14549              # operator before comma has no effect
+    /w14555              # expression has no effect
+    /w14619              # pragma warning: no warning number
+    /w14640              # thread-unsafe static member initialization
+    /w14701              # potentially uninitialized local variable used
+    /w14702              # unreachable code
+    /w14706              # assignment within conditional expression
+    /w14826              # Conversion from 'type1' to 'type2' is sign-extended
+    /w14905              # wide string literal cast to LPSTR
+    /w14906              # string literal cast to LPWSTR
+    /w14928              # illegal copy-initialization
+)
+
+set(SHARK_GCC_CLANG_WARNINGS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow             # Warn when a local variable shadows another
+    -Wnon-virtual-dtor   # Class with virtual functions but non-virtual destructor
+    -Wold-style-cast     # C-style casts in C++
+    -Wcast-align         # Cast increases required alignment
+    -Wunused             # Unused variables / functions
+    -Woverloaded-virtual # Overloaded virtual function hides base virtual function
+    -Wconversion         # Implicit type conversions
+    -Wsign-conversion    # Conversion between signed and unsigned types
+    -Wnull-dereference   # Potential null pointer dereference
+    -Wdouble-promotion   # Implicit float to double promotion
+    -Wformat=2           # Security warnings for printf/scanf format strings
+    -Wimplicit-fallthrough # Unannotated fallthrough in switch cases
+    -Wextra-semi         # Redundant semicolons
+)
+
 set(SHARK_COMPILER_OPTIONS
-    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive->
-    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-        -Wall -Wextra -Wpedantic -Wold-style-cast -Wunused -Wcast-align -Wnon-virtual-dtor -Woverloaded-virtual
-    >
+    $<$<CXX_COMPILER_ID:MSVC>:${SHARK_MSVC_WARNINGS}>
+    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${SHARK_GCC_CLANG_WARNINGS}>
+    $<$<BOOL:${SHARK_WARNINGS_AS_ERRORS}>:$<$<CXX_COMPILER_ID:MSVC>:/WX>$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Werror>>
 )
 
 # Dependencies
@@ -53,10 +101,12 @@ if(NOT EMSCRIPTEN)
 else()
     # Emscripten / WebAssembly setup
     set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps" CACHE PATH "Directory for FetchContent sources")
+    include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/.deps")
     include(FetchContent)
 
     FetchContent_Declare(
         json
+        SYSTEM
         GIT_REPOSITORY https://github.com/nlohmann/json.git
         GIT_TAG        v3.11.3
         GIT_SHALLOW    ON
@@ -65,6 +115,7 @@ else()
 
     FetchContent_Declare(
         imgui_src
+        SYSTEM
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
         GIT_TAG        docking
         GIT_SHALLOW    ON
@@ -92,7 +143,11 @@ else()
         ${imgui_src_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
         ${imgui_src_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     )
-    target_include_directories(imgui PUBLIC
+    target_compile_options(imgui PRIVATE
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-w>
+        $<$<CXX_COMPILER_ID:MSVC>:/W0>
+    )
+    target_include_directories(imgui SYSTEM PUBLIC
         ${imgui_src_SOURCE_DIR}
         ${imgui_src_SOURCE_DIR}/backends
     )
@@ -101,6 +156,7 @@ else()
 
     FetchContent_Declare(
         stb_src
+        SYSTEM
         GIT_REPOSITORY https://github.com/nothings/stb.git
         GIT_TAG        master
         GIT_SHALLOW    ON
@@ -108,11 +164,12 @@ else()
     FetchContent_MakeAvailable(stb_src)
 
     add_library(stb INTERFACE)
-    target_include_directories(stb INTERFACE ${stb_src_SOURCE_DIR})
+    target_include_directories(stb SYSTEM INTERFACE ${stb_src_SOURCE_DIR})
 
     set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
     FetchContent_Declare(
         lua
+        SYSTEM
         GIT_REPOSITORY https://github.com/walterschell/Lua.git
         GIT_TAG        v5.4.6
         GIT_SHALLOW    ON
@@ -121,8 +178,16 @@ else()
     set(LUA_ENABLE_SHARED OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(lua)
 
+    if(TARGET lua_static)
+        target_compile_options(lua_static PRIVATE
+            $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-w>
+            $<$<CXX_COMPILER_ID:MSVC>:/W0>
+        )
+    endif()
+
     FetchContent_Declare(
         sol2
+        SYSTEM
         GIT_REPOSITORY https://github.com/ThePhD/sol2.git
         GIT_TAG        v3.5.0
         GIT_SHALLOW    ON

@@ -5,26 +5,29 @@
 namespace GL {
 
 class VertexBuffer : public IVertexBuffer {
-public:
-    VertexBuffer(const void* data, size_t size);
+  public:
+    VertexBuffer(const void *data, size_t size);
     ~VertexBuffer() override = default;
 
-    // Disable copy
-    VertexBuffer(const VertexBuffer&) = delete;
-    VertexBuffer& operator=(const VertexBuffer&) = delete;
+    VertexBuffer(const VertexBuffer &) = delete;
+    VertexBuffer &operator=(const VertexBuffer &) = delete;
 
-    VertexBuffer(VertexBuffer&&) noexcept = default;
-    VertexBuffer& operator=(VertexBuffer&&) noexcept = default;
+    VertexBuffer(VertexBuffer &&) noexcept = default;
+    VertexBuffer &operator=(VertexBuffer &&) noexcept = default;
 
     void bind() override;
     void unbind() override;
-    void setData(const void* data, size_t size) override;
+    void setData(const void *data, size_t size) override;
 
-    [[nodiscard]] GLuint getVaoId() const { return vao.get(); }
-    [[nodiscard]] GLuint getVboId() const { return vbo.get(); }
+    [[nodiscard]] GLuint getVaoId() const {
+        return vao.get();
+    }
+    [[nodiscard]] GLuint getVboId() const {
+        return vbo.get();
+    }
 
-private:
-    GL::VertexArrayObject vao;
+  private:
+    GL::VertexArrayObject  vao;
     GL::VertexBufferObject vbo;
 };
 

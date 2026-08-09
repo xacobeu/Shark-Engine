@@ -1,30 +1,31 @@
 #pragma once
 
-#include <vector>
-#include <SharkEngine/util/Vector.hpp>
 #include <SharkEngine/renderer/geometry/Vertex.hpp>
+#include <SharkEngine/util/Vector.hpp>
+#include <vector>
 
 class Mesh {
-public:
-
+  public:
     struct MeshData {
         std::vector<Vertex> vertices;
-        std::vector<int> triangles;
+        std::vector<int>    triangles;
     };
 
     Mesh() = default;
-    explicit Mesh(MeshData data) : data(std::move(data)) {}
-    const MeshData& getData() const { return data; }
+    explicit Mesh(MeshData data) : data(std::move(data)) { }
+    const MeshData &getData() const {
+        return data;
+    }
 
-    Mesh& translate(const Vector3& t);
+    Mesh &translate(const Vector3 &t);
 
-    Mesh& scale(const Vector3& s);
-    Mesh& scale(float s);
+    Mesh &scale(const Vector3 &s);
+    Mesh &scale(float s);
 
-    Mesh& rotateX(float angleDeg);
-    Mesh& rotateY(float angleDeg);
-    Mesh& rotateZ(float angleDeg);
+    Mesh &rotateX(float angleDeg);
+    Mesh &rotateY(float angleDeg);
+    Mesh &rotateZ(float angleDeg);
 
-private:
+  private:
     MeshData data;
 };

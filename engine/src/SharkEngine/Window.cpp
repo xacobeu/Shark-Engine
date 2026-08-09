@@ -1,14 +1,14 @@
 #include <SharkEngine/Window.hpp>
 
 #ifdef SHARK_NO_GLAD
-	#include <GLES3/gl3.h>
+#include <GLES3/gl3.h>
 #else
-	#include <glad/glad.h>
+#include <glad/glad.h>
 #endif
-#include <GLFW/glfw3.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include <GLFW/glfw3.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -17,7 +17,7 @@
 #include <cstdio>
 #include <filesystem>
 
-Window::Window(int width, int height, const char* title) {
+Window::Window(int width, int height, const char *title) {
 
     if (!glfwInit()) {
         printf("GLFW Init Failed!\n");
@@ -76,7 +76,7 @@ void Window::initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.Fonts->Clear();
     if (std::filesystem::exists("res/font/AtkinsonHyperlegible-Regular.ttf")) {
@@ -106,7 +106,7 @@ void Window::endImGuiFrame() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        GLFWwindow* backup_current_context = glfwGetCurrentContext();
+        GLFWwindow *backup_current_context = glfwGetCurrentContext();
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
         glfwMakeContextCurrent(backup_current_context);
@@ -115,23 +115,27 @@ void Window::endImGuiFrame() {
 
 // Mouse callbacks
 
-void Window::_mouseButtonCallback(GLFWwindow* win, int button, int action, int mods) {
+void Window::_mouseButtonCallback(GLFWwindow *win, int button, int action, int mods) {
     ImGui_ImplGlfw_MouseButtonCallback(win, button, action, mods);
-    if (ImGui::GetIO().WantCaptureMouse) return;
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
 
-    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
-    if (window && window->events.onMouseClick) window->events.onMouseClick(button, action, mods);
+    Window *window = static_cast<Window *>(glfwGetWindowUserPointer(win));
+    if (window && window->events.onMouseClick)
+        window->events.onMouseClick(button, action, mods);
 }
 
-void Window::_cursorPosCallback(GLFWwindow* win, double x, double y) {
+void Window::_cursorPosCallback(GLFWwindow *win, double x, double y) {
     ImGui_ImplGlfw_CursorPosCallback(win, x, y);
-    if (ImGui::GetIO().WantCaptureMouse) return;
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
 
-    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
-    if (window && window->events.onMouseMove) window->events.onMouseMove(x, y);
+    Window *window = static_cast<Window *>(glfwGetWindowUserPointer(win));
+    if (window && window->events.onMouseMove)
+        window->events.onMouseMove(x, y);
 }
 
-void Window::_scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
+void Window::_scrollCallback(GLFWwindow *win, double xoffset, double yoffset) {
     ImGui_ImplGlfw_ScrollCallback(win, xoffset, yoffset);
 
     // Debug: Check if ImGui is consuming the scroll
@@ -140,33 +144,37 @@ void Window::_scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
         return;
     }
 
-    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
+    Window *window = static_cast<Window *>(glfwGetWindowUserPointer(win));
     if (window) {
         window->scrollX += xoffset;
         window->scrollY += yoffset;
-        if (window->events.onScroll) window->events.onScroll(xoffset, yoffset);
+        if (window->events.onScroll)
+            window->events.onScroll(xoffset, yoffset);
     }
 }
 
 // Keyboard callbacks
 
-void Window::_keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods) {
+void Window::_keyCallback(GLFWwindow *win, int key, int scancode, int action, int mods) {
     ImGui_ImplGlfw_KeyCallback(win, key, scancode, action, mods);
-    if (ImGui::GetIO().WantCaptureKeyboard) return;
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return;
 
-    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
-    if (window && window->events.onKey) window->events.onKey(key, action, mods);
+    Window *window = static_cast<Window *>(glfwGetWindowUserPointer(win));
+    if (window && window->events.onKey)
+        window->events.onKey(key, action, mods);
 }
 
-void Window::_charCallback(GLFWwindow* w, unsigned int codepoint) {
+void Window::_charCallback(GLFWwindow *w, unsigned int codepoint) {
     ImGui_ImplGlfw_CharCallback(w, codepoint);
 }
 
 // Window callbacks
 
-void Window::_resizeCallback(GLFWwindow* win, int width, int height) {
-    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
-    if (window && window->events.onResize) window->events.onResize(width, height);
+void Window::_resizeCallback(GLFWwindow *win, int width, int height) {
+    Window *window = static_cast<Window *>(glfwGetWindowUserPointer(win));
+    if (window && window->events.onResize)
+        window->events.onResize(width, height);
 }
 
 bool Window::shouldClose() const {
@@ -221,7 +229,7 @@ double Window::getCursorY() const {
     return y;
 }
 
-void Window::getDimensions(int& width, int& height) const {
+void Window::getDimensions(int &width, int &height) const {
     glfwGetFramebufferSize(window, &width, &height);
 }
 

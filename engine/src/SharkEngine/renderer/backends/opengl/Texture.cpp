@@ -1,19 +1,19 @@
 #include <SharkEngine/renderer/backends/opengl/Texture.hpp>
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 #include <iostream>
+#include <stb_image.h>
 #include <stdexcept>
 
 namespace GL {
 
-Texture::Texture(const std::string& filepath) {
+Texture::Texture(const std::string &filepath) {
     glTexture.create();
 
-    // Flip textures vertically as OpenGL expects UV coordinates to start from bottom-left
+    // OpenGL amazing defaults wow
     stbi_set_flip_vertically_on_load(true);
 
-    int w, h, ch;
-    unsigned char* data = stbi_load(filepath.c_str(), &w, &h, &ch, 0);
+    int            w, h, ch;
+    unsigned char *data = stbi_load(filepath.c_str(), &w, &h, &ch, 0);
     if (!data) {
         std::cerr << "[ERROR] Failed to load texture at path: " << filepath << std::endl;
         throw std::runtime_error("Failed to load texture: " + filepath);

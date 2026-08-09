@@ -2,7 +2,7 @@
 #include <string>
 
 class ITexture {
-public:
+  public:
     virtual ~ITexture() = default;
     virtual void bind(unsigned int slot = 0) const = 0;
     virtual void unbind() const = 0;

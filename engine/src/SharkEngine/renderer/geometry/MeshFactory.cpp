@@ -6,57 +6,56 @@ Mesh::MeshData MeshFactory::createCubeMesh() {
     Mesh::MeshData mesh;
 
     static constexpr Vector3 positions[6][4] = {
-        { {-1,-1, 1}, { 1,-1, 1}, { 1, 1, 1}, {-1, 1, 1} }, // Front
-        { {-1,-1,-1}, {-1, 1,-1}, { 1, 1,-1}, { 1,-1,-1} }, // Back
-        { {-1, 1,-1}, {-1, 1, 1}, { 1, 1, 1}, { 1, 1,-1} }, // Top
-        { {-1,-1,-1}, { 1,-1,-1}, { 1,-1, 1}, {-1,-1, 1} }, // Bottom
-        { { 1,-1,-1}, { 1, 1,-1}, { 1, 1, 1}, { 1,-1, 1} }, // Right
-        { {-1,-1,-1}, {-1,-1, 1}, {-1, 1, 1}, {-1, 1,-1} }  // Left
+        { { -1, -1, 1 },  { 1, -1, 1 },  { 1, 1, 1 },  { -1, 1, 1 }  }, // Front
+        { { -1, -1, -1 }, { -1, 1, -1 }, { 1, 1, -1 }, { 1, -1, -1 } }, // Back
+        { { -1, 1, -1 },  { -1, 1, 1 },  { 1, 1, 1 },  { 1, 1, -1 }  }, // Top
+        { { -1, -1, -1 }, { 1, -1, -1 }, { 1, -1, 1 }, { -1, -1, 1 } }, // Bottom
+        { { 1, -1, -1 },  { 1, 1, -1 },  { 1, 1, 1 },  { 1, -1, 1 }  }, // Right
+        { { -1, -1, -1 }, { -1, -1, 1 }, { -1, 1, 1 }, { -1, 1, -1 } }  // Left
     };
 
     static constexpr Vector3 normals[6] = {
-        {0,0,1},  {0,0,-1}, {0,1,0},
-        {0,-1,0}, {1,0,0},  {-1,0,0}
+        { 0,  0,  1  },
+        { 0,  0,  -1 },
+        { 0,  1,  0  },
+        { 0,  -1, 0  },
+        { 1,  0,  0  },
+        { -1, 0,  0  }
     };
 
     static constexpr Vector2 uvs[4] = {
-        {0,0}, {1,0}, {1,1}, {0,1}
+        { 0, 0 },
+        { 1, 0 },
+        { 1, 1 },
+        { 0, 1 }
     };
 
     static constexpr Vector3 colors[6] = {
-        {  1, 0.2, 0.2},
-        {0.2,   1, 0.2},
-        {0.2, 0.2,   1},
-        {  1,   1, 0.2},
-        {  1, 0.2,   1},
-        {0.2,   1,   1}
+        { 1.0f, 0.2f, 0.2f },
+        { 0.2f, 1.0f, 0.2f },
+        { 0.2f, 0.2f, 1.0f },
+        { 1.0f, 1.0f, 0.2f },
+        { 1.0f, 0.2f, 1.0f },
+        { 0.2f, 1.0f, 1.0f }
     };
 
     // Build vertices
     for (int face = 0; face < 6; face++) {
         for (int i = 0; i < 4; i++) {
-            mesh.vertices.push_back(Vertex{
-                positions[face][i],
-                normals[face],
-                uvs[i],
-                colors[face]
-            });
+            mesh.vertices.push_back(Vertex{ positions[face][i], normals[face], uvs[i], colors[face] });
         }
     }
 
     // Triangles
     for (int face = 0; face < 6; face++) {
         int base = face * 4;
-        mesh.triangles.insert(mesh.triangles.end(), {
-            base, base+1, base+2,
-            base, base+2, base+3
-        });
+        mesh.triangles.insert(mesh.triangles.end(), { base, base + 1, base + 2, base, base + 2, base + 3 });
     }
 
     return mesh;
 }
 
-Mesh::MeshData MeshFactory::createSphereMesh(const int resolution, const Vector3& color) {
+Mesh::MeshData MeshFactory::createSphereMesh(const int resolution, const Vector3 &color) {
 
     Mesh::MeshData mesh;
 
@@ -67,24 +66,12 @@ Mesh::MeshData MeshFactory::createSphereMesh(const int resolution, const Vector3
             float phi = float(lon) / resolution * 2 * std::numbers::pi_v<float>;
 
             // Spherical coordinates to cartesian
-            Vector3 pointOnSphere = {
-                sin(theta) * cos(phi),
-                cos(theta),
-                sin(theta) * sin(phi)
-            };
+            Vector3 pointOnSphere = { sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi) };
 
             // UV coordinates
-            Vector2 uv = {
-                1.0f - float(lon) / resolution,
-                float(lat) / resolution
-            };
+            Vector2 uv = { 1.0f - float(lon) / resolution, float(lat) / resolution };
 
-            mesh.vertices.push_back(Vertex{
-                pointOnSphere,
-                normalize(pointOnSphere),
-                uv,
-                color
-            });
+            mesh.vertices.push_back(Vertex{ pointOnSphere, normalize(pointOnSphere), uv, color });
         }
     }
 

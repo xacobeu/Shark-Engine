@@ -1,7 +1,7 @@
-#include "imgui.h"
-#include <iostream>
-#include <cmath>
 #include "RayTracingExample.hpp"
+#include "imgui.h"
+#include <cmath>
+#include <iostream>
 
 void RayTracingExample::onAttach() {
     std::cout << "[DEBUG] GPU Raytracer layer attached" << std::endl;
@@ -10,13 +10,13 @@ void RayTracingExample::onAttach() {
 
     // Quad geometry (NDC covering [-1, 1]) using unified Vertex format
     Vertex quadVertices[] = {
-        { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} },
-        { {-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} },
-        { { 1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} },
+        { { -1.0f, 1.0f, 0.0f },  { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } },
+        { { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
+        { { 1.0f, -1.0f, 0.0f },  { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
 
-        { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} },
-        { { 1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} },
-        { { 1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} }
+        { { -1.0f, 1.0f, 0.0f },  { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } },
+        { { 1.0f, -1.0f, 0.0f },  { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
+        { { 1.0f, 1.0f, 0.0f },   { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } }
     };
 
     quadVbo = app->getDevice()->createVertexBuffer(quadVertices, sizeof(quadVertices));
@@ -30,11 +30,12 @@ void RayTracingExample::onUpdate(float deltaTime) {
     sphere1Pos.y = std::cos(time * 1.5f) * 0.5f;
 }
 
-void RayTracingExample::onRender(Renderer&) {
+void RayTracingExample::onRender(Renderer &) {
     raytraceShader->bind();
 
     float safeHeight = static_cast<float>(app->getHeight());
-    if (safeHeight < 1.0f) safeHeight = 1.0f;
+    if (safeHeight < 1.0f)
+        safeHeight = 1.0f;
     float aspectRatio = static_cast<float>(app->getWidth()) / safeHeight;
     raytraceShader->setFloat("u_AspectRatio", aspectRatio);
     raytraceShader->setFloat("u_Time", time);
@@ -53,7 +54,7 @@ void RayTracingExample::onRender(Renderer&) {
     ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiCond_FirstUseEver);
     ImGui::Begin("GPU Raytracer Settings");
 
-    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::Text("FPS: %.1f", static_cast<double>(ImGui::GetIO().Framerate));
     ImGui::Checkbox("Enable Shadows", &enableShadows);
     ImGui::Checkbox("Enable Reflections", &enableReflections);
     if (enableReflections) {

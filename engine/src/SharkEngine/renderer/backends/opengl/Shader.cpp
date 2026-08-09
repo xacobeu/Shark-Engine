@@ -1,13 +1,13 @@
 #include <SharkEngine/renderer/backends/opengl/Shader.hpp>
 #include <fstream>
-#include <sstream>
-#include <vector>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace GL {
 
-Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
+Shader::Shader(const std::string &vertexPath, const std::string &fragmentPath) {
     std::string vertexSource = loadTextFile(vertexPath);
     std::string fragmentSource = loadTextFile(fragmentPath);
 
@@ -27,7 +27,7 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
         std::vector<char> log(static_cast<size_t>(logLength));
         glGetProgramInfoLog(program, logLength, nullptr, log.data());
         std::cerr << "[ERROR] Link failed: " << log.data() << std::endl;
-        
+
         glDeleteShader(vs);
         glDeleteShader(fs);
         glDeleteProgram(program);
@@ -41,7 +41,7 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
     glDeleteShader(fs);
 }
 
-Shader::Shader(SourceStringTag, const std::string& vertexSource, const std::string& fragmentSource) {
+Shader::Shader(SourceStringTag, const std::string &vertexSource, const std::string &fragmentSource) {
     GLuint vs = compile(GL_VERTEX_SHADER, vertexSource);
     GLuint fs = compile(GL_FRAGMENT_SHADER, fragmentSource);
 
@@ -58,7 +58,7 @@ Shader::Shader(SourceStringTag, const std::string& vertexSource, const std::stri
         std::vector<char> log(static_cast<size_t>(logLength));
         glGetProgramInfoLog(program, logLength, nullptr, log.data());
         std::cerr << "[ERROR] Link failed: " << log.data() << std::endl;
-        
+
         glDeleteShader(vs);
         glDeleteShader(fs);
         glDeleteProgram(program);
@@ -86,7 +86,7 @@ void Shader::unbind() {
     glUseProgram(0);
 }
 
-GLint Shader::uniform(const std::string& name) {
+GLint Shader::uniform(const std::string &name) {
     auto it = uniformCache.find(name);
     if (it != uniformCache.end()) {
         return it->second;
@@ -96,31 +96,31 @@ GLint Shader::uniform(const std::string& name) {
     return loc;
 }
 
-void Shader::setMat4(const std::string& name, const float* matrixData) {
+void Shader::setMat4(const std::string &name, const float *matrixData) {
     glUniformMatrix4fv(uniform(name), 1, GL_FALSE, matrixData);
 }
 
-void Shader::setInt(const std::string& name, int value) {
+void Shader::setInt(const std::string &name, int value) {
     glUniform1i(uniform(name), value);
 }
 
-void Shader::setFloat(const std::string& name, float value) {
+void Shader::setFloat(const std::string &name, float value) {
     glUniform1f(uniform(name), value);
 }
 
-void Shader::setVec2(const std::string& name, float x, float y) {
+void Shader::setVec2(const std::string &name, float x, float y) {
     glUniform2f(uniform(name), x, y);
 }
 
-void Shader::setVec3(const std::string& name, float x, float y, float z) {
+void Shader::setVec3(const std::string &name, float x, float y, float z) {
     glUniform3f(uniform(name), x, y, z);
 }
 
-void Shader::setVec4(const std::string& name, float x, float y, float z, float w) {
+void Shader::setVec4(const std::string &name, float x, float y, float z, float w) {
     glUniform4f(uniform(name), x, y, z, w);
 }
 
-std::string Shader::loadTextFile(const std::string& path) {
+std::string Shader::loadTextFile(const std::string &path) {
     std::ifstream file(path);
     if (!file.is_open() && !path.empty() && path[0] != '/') {
         file.open("/" + path);
@@ -134,7 +134,7 @@ std::string Shader::loadTextFile(const std::string& path) {
     return ss.str();
 }
 
-GLuint Shader::compile(GLenum type, const std::string& source) {
+GLuint Shader::compile(GLenum type, const std::string &source) {
     std::string processedSource = source;
 #ifdef __EMSCRIPTEN__
     size_t verPos = processedSource.find("#version 330 core");
@@ -148,8 +148,8 @@ GLuint Shader::compile(GLenum type, const std::string& source) {
         }
     }
 #endif
-    GLuint id = glCreateShader(type);
-    const char* src = processedSource.c_str();
+    GLuint      id = glCreateShader(type);
+    const char *src = processedSource.c_str();
     glShaderSource(id, 1, &src, nullptr);
     glCompileShader(id);
 

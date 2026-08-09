@@ -1,21 +1,21 @@
-#include <SharkEngine/Application.hpp>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
+#include <SharkEngine/Application.hpp>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 
-static void emscriptenLoop(void* arg) {
-    Application* app = static_cast<Application*>(arg);
+static void emscriptenLoop(void *arg) {
+    Application *app = static_cast<Application *>(arg);
     app->runStep();
 }
 #endif
 
 #include <SharkEngine/renderer/backends/IRenderDevice.hpp>
 
-Application::Application(const Config& config) : config(config), window(config.width, config.height, config.title) {
+Application::Application(const Config &config) : config(config), window(config.width, config.height, config.title) {
     device = IRenderDevice::create(config.api);
     renderer.init(device.get());
     device->setVSync(config.vsync);
@@ -45,13 +45,13 @@ void Application::runStep() {
         }
     }
 
-    for (auto& layer : layers) {
+    for (auto &layer : layers) {
         layer->onUpdate(deltaTime);
     }
 
     renderer.begin(config.width, config.height);
 
-    for (auto& layer : layers) {
+    for (auto &layer : layers) {
         layer->onRender(renderer);
     }
 
@@ -64,7 +64,7 @@ void Application::close() {
     window.close();
 }
 
-const std::vector<std::unique_ptr<Layer>>& Application::getLayers() const {
+const std::vector<std::unique_ptr<Layer>> &Application::getLayers() const {
     return layers;
 }
 

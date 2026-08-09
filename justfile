@@ -13,11 +13,11 @@ update-clangd target=default_target:
 
 [private]
 _clangd-desktop:
-    cmake -E echo "CompilationDatabase: build/desktop-dev" > .clangd
+    @powershell -NoProfile -Command "Set-Content -Path .clangd -Value 'CompilationDatabase: build/desktop-dev`n`nCompileFlags:`n  Add:`n    - -Wall`n    - -Wextra`n    - -Wpedantic`n    - -Wshadow`n    - -Wconversion`n    - -Wsign-conversion`n    - -Wold-style-cast`n    - -Wnon-virtual-dtor`n    - -Wunused`n    - -Wnull-dereference`n    - -Wdouble-promotion`n    - -Wextra-semi`n  Remove:`n    - /W*`n    - /w*`n    - /external:*' -Encoding utf8"
 
 [private]
 _clangd-web:
-    cmake -E echo "CompilationDatabase: build/web-release" > .clangd
+    @powershell -NoProfile -Command "Set-Content -Path .clangd -Value 'CompilationDatabase: build/web-release`n`nCompileFlags:`n  Add:`n    - -Wall`n    - -Wextra`n    - -Wpedantic`n    - -Wshadow`n    - -Wconversion`n    - -Wsign-conversion`n    - -Wold-style-cast`n    - -Wnon-virtual-dtor`n    - -Wunused`n    - -Wnull-dereference`n    - -Wdouble-promotion`n    - -Wextra-semi`n  Remove:`n    - /W*`n    - /w*`n    - /external:*' -Encoding utf8"
 
 # Run target: `just run` or `just run web`
 run target=default_target: (build target)

@@ -1,65 +1,96 @@
 #pragma once
 
-#include <SharkEngine/renderer/Renderer.hpp>
 #include <SharkEngine/Window.hpp>
+#include <SharkEngine/renderer/Renderer.hpp>
 
 #include <SharkEngine/renderer/backends/IRenderDevice.hpp>
 
 #include <memory>
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 struct Config {
-    int width = 800;
-    int height = 600;
-    const char* title = "Application";
-    bool vsync = true;
+    int         width = 800;
+    int         height = 600;
+    const char *title = "Application";
+    bool        vsync = true;
     GraphicsAPI api = GraphicsAPI::OpenGL;
 };
 
 class Application {
-public:
-
-    Application(const Config& config);
+  public:
+    Application(const Config &config);
     ~Application() = default;
 
     void run();
     void runStep();
     void close();
 
-    const std::vector<std::unique_ptr<Layer>>& getLayers() const;
+    const std::vector<std::unique_ptr<Layer>> &getLayers() const;
 
-    Window::Events& getWindowEvents() { return window.events; }
-    Renderer& getRenderer() { return renderer; }
-    void getWindowDimensions(int& width, int& height) const { window.getDimensions(width, height); }
-    int getWidth() const { return config.width; }
-    int getHeight() const { return config.height; }
+    Window::Events &getWindowEvents() {
+        return window.events;
+    }
+    Renderer &getRenderer() {
+        return renderer;
+    }
+    void getWindowDimensions(int &width, int &height) const {
+        window.getDimensions(width, height);
+    }
+    int getWidth() const {
+        return config.width;
+    }
+    int getHeight() const {
+        return config.height;
+    }
 
-    float getElapsedTime() const { return elapsedTime; }
-    float getDeltaTime() const { return deltaTime; }
+    float getElapsedTime() const {
+        return elapsedTime;
+    }
+    float getDeltaTime() const {
+        return deltaTime;
+    }
 
     void updateTime(float now);
 
-    double getCursorX() const { return window.getCursorX(); }
-    double getCursorY() const { return window.getCursorY(); }
+    double getCursorX() const {
+        return window.getCursorX();
+    }
+    double getCursorY() const {
+        return window.getCursorY();
+    }
 
-    bool isKeyPressed(int key) const { return window.isKeyPressed(key); }
-    bool isMouseButtonPressed(int button) const { return window.isMouseButtonPressed(button); }
-    double getScrollX() const { return window.getScrollX(); }
-    double getScrollY() const { return window.getScrollY(); }
+    bool isKeyPressed(int key) const {
+        return window.isKeyPressed(key);
+    }
+    bool isMouseButtonPressed(int button) const {
+        return window.isMouseButtonPressed(button);
+    }
+    double getScrollX() const {
+        return window.getScrollX();
+    }
+    double getScrollY() const {
+        return window.getScrollY();
+    }
 
-    void setScene(Scene* scene) { activeScene = scene; }
-    [[nodiscard]] Scene* getScene() const { return activeScene; }
+    void setScene(Scene *scene) {
+        activeScene = scene;
+    }
+    [[nodiscard]] Scene *getScene() const {
+        return activeScene;
+    }
 
-    [[nodiscard]] IRenderDevice* getDevice() const { return device.get(); }
+    [[nodiscard]] IRenderDevice *getDevice() const {
+        return device.get();
+    }
 
-private:
-    Scene* activeScene = nullptr;
+  private:
+    Scene *activeScene = nullptr;
     Config config;
 
     std::unique_ptr<IRenderDevice> device;
-    Renderer renderer;
-    Window window;
+    Renderer                       renderer;
+    Window                         window;
 
     std::vector<std::unique_ptr<Layer>> layers;
 
@@ -67,10 +98,9 @@ private:
     float deltaTime = 0.0f;
     float lastFrameTime = 0.0f;
 
-public:
-
-    template<typename T>
-    requires std::is_base_of_v<Layer, T>
+  public:
+    template <typename T>
+        requires std::is_base_of_v<Layer, T>
     void push(std::unique_ptr<T> layer) {
 
         if constexpr (UniqueLayer<T>) {
@@ -84,11 +114,10 @@ public:
         layers.emplace_back(std::move(layer));
     }
 
-    template<typename T>
-    T* getLayer() {
+    template <typename T> T *getLayer() {
 
-        for (auto& layer : layers) {
-            if (auto ptr = dynamic_cast<T*>(layer.get())) {
+        for (auto &layer : layers) {
+            if (auto ptr = dynamic_cast<T *>(layer.get())) {
                 return ptr;
             }
         }

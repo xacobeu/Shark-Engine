@@ -5,9 +5,8 @@
 struct GLFWwindow;
 
 class Window {
-public:
-
-    Window(int width, int height, const char* title);
+  public:
+    Window(int width, int height, const char *title);
     ~Window();
 
     void initImGui();
@@ -27,7 +26,7 @@ public:
 
     void swapBuffers() const;
     void pollEvents() const;
-    void getDimensions(int& width, int& height) const;
+    void getDimensions(int &width, int &height) const;
 
     bool isKeyPressed(int key) const;
     bool isMouseButtonPressed(int button) const;
@@ -35,24 +34,31 @@ public:
     double getCursorX() const;
     double getCursorY() const;
 
-    double getScrollX() const { return scrollX; }
-    double getScrollY() const { return scrollY; }
-    void resetScroll() { scrollX = 0.0; scrollY = 0.0; }
+    double getScrollX() const {
+        return scrollX;
+    }
+    double getScrollY() const {
+        return scrollY;
+    }
+    void resetScroll() {
+        scrollX = 0.0;
+        scrollY = 0.0;
+    }
 
     int getWidth() const;
     int getHeight() const;
 
     void setVSync(bool enabled);
 
-private:
-    GLFWwindow* window = nullptr;
-    double scrollX = 0.0;
-    double scrollY = 0.0;
+  private:
+    GLFWwindow *window = nullptr;
+    double      scrollX = 0.0;
+    double      scrollY = 0.0;
 
-    static void _mouseButtonCallback(GLFWwindow* win, int button, int action, int mods);
-    static void _cursorPosCallback(GLFWwindow* win, double x, double y);
-    static void _scrollCallback(GLFWwindow* win, double xoffset, double yoffset);
-    static void _keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods);
-    static void _charCallback(GLFWwindow* w, unsigned int codepoint);
-    static void _resizeCallback(GLFWwindow* win, int width, int height);
+    static void _mouseButtonCallback(GLFWwindow *win, int button, int action, int mods);
+    static void _cursorPosCallback(GLFWwindow *win, double x, double y);
+    static void _scrollCallback(GLFWwindow *win, double xoffset, double yoffset);
+    static void _keyCallback(GLFWwindow *win, int key, int scancode, int action, int mods);
+    static void _charCallback(GLFWwindow *w, unsigned int codepoint);
+    static void _resizeCallback(GLFWwindow *win, int width, int height);
 };
