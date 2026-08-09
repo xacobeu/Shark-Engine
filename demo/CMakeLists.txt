@@ -23,13 +23,14 @@ target_link_libraries(SharkEngineDemo PRIVATE
 )
 
 if(EMSCRIPTEN)
-    # Shaders are preloaded into the generated .data file.  Make the link step
-    # depend on them so a shader-only edit refreshes the browser artifact.
+    # Shaders and scripts are preloaded into the generated .data file. Make the link step
+    # depend on them so an edit refreshes the browser artifact.
     set_property(TARGET SharkEngineDemo APPEND PROPERTY LINK_DEPENDS
         "${SharkEngine_SOURCE_DIR}/engine/res/shaders/default.vert.glsl"
         "${SharkEngine_SOURCE_DIR}/engine/res/shaders/default.frag.glsl"
         "${SharkEngine_SOURCE_DIR}/engine/res/shaders/raytrace.vert.glsl"
         "${SharkEngine_SOURCE_DIR}/engine/res/shaders/raytrace.frag.glsl"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/layers/layer.lua"
     )
 
     # Output SharkEngineDemo.html, SharkEngineDemo.js, and SharkEngineDemo.wasm
@@ -42,7 +43,8 @@ if(EMSCRIPTEN)
         "-sMIN_WEBGL_VERSION=2"
         "-sMAX_WEBGL_VERSION=2"
         "-sALLOW_MEMORY_GROWTH=1"
-        "--preload-file" "${SharkEngine_SOURCE_DIR}/engine/res@/res"
+        "SHELL:--preload-file ${SharkEngine_SOURCE_DIR}/engine/res@/res"
+        "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/src/layers/layer.lua@res/scripts/layer.lua"
         "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html"
     )
 
@@ -51,7 +53,12 @@ else()
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${SharkEngine_SOURCE_DIR}/engine/res"
             "$<TARGET_FILE_DIR:SharkEngineDemo>/res"
-        COMMENT "Copying engine resources to output directory"
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:SharkEngineDemo>/res/scripts"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/layers/layer.lua"
+            "$<TARGET_FILE_DIR:SharkEngineDemo>/res/scripts/layer.lua"
+        COMMENT "Copying engine and demo resources to output directory"
     )
     add_dependencies(SharkEngineDemo CopyEngineResources)
 

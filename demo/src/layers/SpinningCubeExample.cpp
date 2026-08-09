@@ -28,6 +28,7 @@ void SpinningCubeExample::onRender(Renderer &renderer) {
 
     renderer.render(scene, app->getWidth(), app->getHeight());
 
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     ImGui::Begin("DEBUG");
     ImGui::Text("Elapsed: %.2f s", static_cast<double>(elapsed));
     ImGui::Text("Frames: %d", frameCount);

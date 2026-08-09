@@ -1,5 +1,3 @@
--- engine/res/scripts/layer.lua
-
 local camera = nil
 local tallBox = nil
 local time = 0
@@ -16,42 +14,42 @@ function onAttach()
     local cubeMesh = MeshFactory.cube()
 
     -- Cornell Box Walls
-    -- Floor (White)
+    -- Floor 
     local floor = scene:addEntity()
     floor:setMesh(cubeMesh)
     floor:setPosition(Vector3.new(0, -2, 0))
     floor:setScale(Vector3.new(4, 0.1, 4))
     floor:setColor(Vector4.new(0.8, 0.8, 0.8, 1))
 
-    -- Ceiling (White)
+    -- Ceiling 
     local ceiling = scene:addEntity()
     ceiling:setMesh(cubeMesh)
     ceiling:setPosition(Vector3.new(0, 2, 0))
     ceiling:setScale(Vector3.new(4, 0.1, 4))
     ceiling:setColor(Vector4.new(0.8, 0.8, 0.8, 1))
 
-    -- Back Wall (White)
+    -- Back Wall
     local backWall = scene:addEntity()
     backWall:setMesh(cubeMesh)
     backWall:setPosition(Vector3.new(0, 0, -2))
     backWall:setScale(Vector3.new(4, 4, 0.1))
     backWall:setColor(Vector4.new(0.8, 0.8, 0.8, 1))
 
-    -- Left Wall (Red)
+    -- Left Wall 
     local leftWall = scene:addEntity()
     leftWall:setMesh(cubeMesh)
     leftWall:setPosition(Vector3.new(-2, 0, 0))
     leftWall:setScale(Vector3.new(0.1, 4, 4))
     leftWall:setColor(Vector4.new(0.8, 0.1, 0.1, 1))
 
-    -- Right Wall (Green)
+    -- Right Wall
     local rightWall = scene:addEntity()
     rightWall:setMesh(cubeMesh)
     rightWall:setPosition(Vector3.new(2, 0, 0))
     rightWall:setScale(Vector3.new(0.1, 4, 4))
     rightWall:setColor(Vector4.new(0.1, 0.8, 0.1, 1))
 
-    -- Light on Ceiling (Yellow/White)
+    -- Light on Ceiling
     local light = scene:addEntity()
     light:setMesh(cubeMesh)
     light:setPosition(Vector3.new(0, 1.95, 0))
@@ -66,7 +64,7 @@ function onAttach()
     shortBox:setRotation(Vector3.new(0, -18, 0))
     shortBox:setColor(Vector4.new(0.75, 0.75, 0.75, 1))
 
-    -- Tall Box (dynamic)
+    -- Tall Box
     tallBox = scene:addEntity()
     tallBox:setMesh(cubeMesh)
     tallBox:setPosition(Vector3.new(-0.5, -0.8, -0.3))
@@ -86,6 +84,7 @@ end
 function onRender(renderer)
     renderer:render(scene, app:getWidth(), app:getHeight())
 
+    ImGui.SetNextWindowCollapsed(true)
     ImGui.Begin("Lua Script Controller")
     ImGui.Text("Hello from Antigravity Live!")
     ImGui.Separator()

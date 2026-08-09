@@ -52,6 +52,7 @@ void RayTracingExample::onRender(Renderer &) {
     raytraceShader->unbind();
 
     ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     ImGui::Begin("GPU Raytracer Settings");
 
     ImGui::Text("FPS: %.1f", static_cast<double>(ImGui::GetIO().Framerate));

@@ -20,17 +20,7 @@
 
 class ScriptLayer : public Layer {
   public:
-    explicit ScriptLayer(std::string scriptPath) : scriptPath(std::move(scriptPath)) {
-#ifndef __EMSCRIPTEN__
-        if (this->scriptPath == "res/scripts/layer.lua") {
-            if (std::filesystem::exists("../../../engine/res/scripts/layer.lua")) {
-                this->scriptPath = "../../../engine/res/scripts/layer.lua";
-            } else if (std::filesystem::exists("engine/res/scripts/layer.lua")) {
-                this->scriptPath = "engine/res/scripts/layer.lua";
-            }
-        }
-#endif
-    }
+    explicit ScriptLayer(std::string scriptPath) : scriptPath(std::move(scriptPath)) {}
 
     ~ScriptLayer() override = default;
 

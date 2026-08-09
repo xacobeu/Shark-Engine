@@ -139,6 +139,9 @@ void ScriptLayer::bindAPI() {
     imgui["End"] = []() { ImGui::End(); };
     imgui["Text"] = [](const std::string &text) { ImGui::TextUnformatted(text.c_str()); };
     imgui["Separator"] = []() { ImGui::Separator(); };
+    imgui["SetNextWindowCollapsed"] = [](bool collapsed, sol::optional<int> cond) {
+        ImGui::SetNextWindowCollapsed(collapsed, cond.value_or(ImGuiCond_Once));
+    };
 }
 
 void ScriptLayer::checkReload() {
