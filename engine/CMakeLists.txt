@@ -4,8 +4,10 @@ target_compile_options(SharkEngine PRIVATE ${SHARK_COMPILER_OPTIONS})
 
 target_compile_definitions(SharkEngine PUBLIC SOL_ALL_SAFETIES_ON=1)
 
-if(SHARK_ENABLE_UNITY_BUILD)
+if(EMSCRIPTEN)
     set_target_properties(SharkEngine PROPERTIES UNITY_BUILD OFF)
+else()
+    set_target_properties(SharkEngine PROPERTIES UNITY_BUILD ON)
 endif()
 
 # We specify all .cppm module files in the PUBLIC CXX_MODULES file set
