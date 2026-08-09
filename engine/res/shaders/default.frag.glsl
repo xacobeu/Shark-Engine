@@ -1,5 +1,6 @@
 #version 330 core
 precision highp float;
+precision highp int;
 
 in vec3 v_FragPos;
 in vec3 v_Normal;
@@ -7,11 +8,8 @@ in vec2 v_TexCoord;
 
 out vec4 fragColor;
 
-layout(std140) uniform GlobalParams {
-    mat4 u_Transform;
-    vec4 u_Color;
-    int u_HasTexture;
-};
+uniform vec4 u_Color;
+uniform int u_HasTexture;
 
 uniform sampler2D u_Texture;
 

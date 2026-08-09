@@ -1,7 +1,13 @@
 #pragma once
 
 #include <memory>
-import SharkEngine;
+#include <SharkEngine/Layer.hpp>
+#include <SharkEngine/renderer/backends/IShader.hpp>
+#include <SharkEngine/renderer/backends/IVertexBuffer.hpp>
+#include <SharkEngine/util/Vector.hpp>
+#include <SharkEngine/renderer/geometry/Vertex.hpp>
+#include <SharkEngine/renderer/Renderer.hpp>
+#include <SharkEngine/Application.hpp>
 
 class RayTracingExample : public Layer {
 public:

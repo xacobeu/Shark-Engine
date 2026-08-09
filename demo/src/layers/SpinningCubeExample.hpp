@@ -1,6 +1,13 @@
 #pragma once
 
-import SharkEngine;
+#include <SharkEngine/Layer.hpp>
+#include <SharkEngine/renderer/scene/Scene.hpp>
+#include <SharkEngine/renderer/scene/node_types/Entity.hpp>
+#include <SharkEngine/renderer/scene/node_types/OrbitCamera.hpp>
+#include <SharkEngine/renderer/geometry/MeshFactory.hpp>
+#include <SharkEngine/renderer/geometry/Mesh.hpp>
+#include <SharkEngine/renderer/Renderer.hpp>
+#include <SharkEngine/Application.hpp>
 
 class SpinningCubeExample : public Layer {
 public:

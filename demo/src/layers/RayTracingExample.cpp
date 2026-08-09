@@ -33,7 +33,9 @@ void RayTracingExample::onUpdate(float deltaTime) {
 void RayTracingExample::onRender(Renderer&) {
     raytraceShader->bind();
 
-    float aspectRatio = static_cast<float>(app->getWidth()) / static_cast<float>(app->getHeight());
+    float safeHeight = static_cast<float>(app->getHeight());
+    if (safeHeight < 1.0f) safeHeight = 1.0f;
+    float aspectRatio = static_cast<float>(app->getWidth()) / safeHeight;
     raytraceShader->setFloat("u_AspectRatio", aspectRatio);
     raytraceShader->setFloat("u_Time", time);
     raytraceShader->setVec3("u_CameraPos", cameraPos.x, cameraPos.y, cameraPos.z);

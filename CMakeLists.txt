@@ -15,6 +15,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 option(SHARK_ENABLE_PCH "Enable Precompiled Headers" ON)
 option(SHARK_ENABLE_UNITY_BUILD "Enable Unity Builds" ON)
@@ -70,6 +71,18 @@ else()
     )
     FetchContent_MakeAvailable(imgui_src)
 
+    add_library(glfw_dummy INTERFACE)
+    target_link_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
+    add_library(glfw ALIAS glfw_dummy)
+
+    add_library(opengl_dummy INTERFACE)
+    target_link_options(opengl_dummy INTERFACE -sFULL_ES3=1)
+    add_library(OpenGL::GL ALIAS opengl_dummy)
+
+    add_library(glad_dummy INTERFACE)
+    target_compile_definitions(glad_dummy INTERFACE SHARK_NO_GLAD)
+    add_library(glad::glad ALIAS glad_dummy)
+
     add_library(imgui STATIC
         ${imgui_src_SOURCE_DIR}/imgui.cpp
         ${imgui_src_SOURCE_DIR}/imgui_demo.cpp
@@ -83,19 +96,8 @@ else()
         ${imgui_src_SOURCE_DIR}
         ${imgui_src_SOURCE_DIR}/backends
     )
+    target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
     add_library(imgui::imgui ALIAS imgui)
-
-    add_library(glfw_dummy INTERFACE)
-    target_link_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
-    add_library(glfw ALIAS glfw_dummy)
-
-    add_library(opengl_dummy INTERFACE)
-    target_link_options(opengl_dummy INTERFACE -sFULL_ES3=1)
-    add_library(OpenGL::GL ALIAS opengl_dummy)
-
-    add_library(glad_dummy INTERFACE)
-    target_compile_definitions(glad_dummy INTERFACE SHARK_NO_GLAD)
-    add_library(glad::glad ALIAS glad_dummy)
 
     FetchContent_Declare(
         stb_src
@@ -124,6 +126,7 @@ else()
         GIT_REPOSITORY https://github.com/ThePhD/sol2.git
         GIT_TAG        v3.5.0
         GIT_SHALLOW    ON
+        PATCH_COMMAND  ${CMAKE_COMMAND} -D SOL_SRC_DIR=${FETCHCONTENT_BASE_DIR}/sol2-src -P ${CMAKE_SOURCE_DIR}/cmake/PatchSol.cmake
     )
     FetchContent_MakeAvailable(sol2)
 endif()

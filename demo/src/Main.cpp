@@ -1,6 +1,7 @@
 #include <memory>
+#include <SharkEngine/Application.hpp>
+#include <SharkEngine/ScriptLayer.hpp>
 #include "layers/RayTracingExample.hpp"
-import SharkEngine;
 
 int main() {
     Application app{
