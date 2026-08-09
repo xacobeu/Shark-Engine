@@ -72,12 +72,10 @@ else()
     FetchContent_MakeAvailable(imgui_src)
 
     add_library(glfw_dummy INTERFACE)
-    target_compile_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
     target_link_options(glfw_dummy INTERFACE -sUSE_GLFW=3)
     add_library(glfw ALIAS glfw_dummy)
 
     add_library(opengl_dummy INTERFACE)
-    target_compile_options(opengl_dummy INTERFACE -sFULL_ES3=1)
     target_link_options(opengl_dummy INTERFACE -sFULL_ES3=1)
     add_library(OpenGL::GL ALIAS opengl_dummy)
 
@@ -128,6 +126,7 @@ else()
         GIT_REPOSITORY https://github.com/ThePhD/sol2.git
         GIT_TAG        v3.5.0
         GIT_SHALLOW    ON
+        PATCH_COMMAND  ${CMAKE_COMMAND} -D SOL_SRC_DIR=${FETCHCONTENT_BASE_DIR}/sol2-src -P ${CMAKE_SOURCE_DIR}/cmake/PatchSol.cmake
     )
     FetchContent_MakeAvailable(sol2)
 endif()

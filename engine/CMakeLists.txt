@@ -4,7 +4,11 @@ target_compile_options(SharkEngine PRIVATE ${SHARK_COMPILER_OPTIONS})
 
 target_compile_definitions(SharkEngine PUBLIC SOL_ALL_SAFETIES_ON=1)
 
-set_target_properties(SharkEngine PROPERTIES UNITY_BUILD ON)
+if(EMSCRIPTEN)
+    set_target_properties(SharkEngine PROPERTIES UNITY_BUILD OFF)
+else()
+    set_target_properties(SharkEngine PROPERTIES UNITY_BUILD ON)
+endif()
 
 if(NOT EMSCRIPTEN)
     target_precompile_headers(SharkEngine PRIVATE <glad/glad.h>)
