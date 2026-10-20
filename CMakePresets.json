@@ -15,9 +15,9 @@
       "name": "web",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/web-release",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],

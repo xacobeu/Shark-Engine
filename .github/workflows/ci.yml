@@ -2,21 +2,27 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  build-desktop:
-    name: Build Desktop (Linux Clang)
+  desktop:
+    name: Desktop
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Build Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -32,24 +38,53 @@ jobs:
             libxkbcommon-dev \
             wayland-protocols
 
-      - name: Build Desktop Target
+      - name: Build
+        env:
+          CC: clang
+          CXX: clang++
         run: cmake --workflow --preset desktop
 
-  build-web:
-    name: Build Web (WASM)
+  web:
+    name: Web
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
 
-      - name: Setup Emscripten (emsdk)
-        uses: mymindstorm/setup-emsdk@v14
+      - name: Setup Emscripten
+        uses: emscripten-core/setup-emsdk@v15
         with:
-          version: 3.1.57
+          version: latest
 
-      - name: Build Web Target
+      - name: Build
         run: cmake --workflow --preset web
 
+      - name: Prepare Pages Artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          mkdir -p dist
+          cp -r build/web-release/example/* dist/
+          if [ -f dist/SharkEngineExample.html ]; then
+            mv dist/SharkEngineExample.html dist/index.html
+          fi
+
+      - name: Upload Pages Artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+  deploy:
+    name: Deploy
+    needs: web
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

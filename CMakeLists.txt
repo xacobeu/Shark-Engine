@@ -7,6 +7,7 @@ project(SharkEngine LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_COLOR_DIAGNOSTICS ON)
 
@@ -29,8 +30,6 @@ add_compile_options(
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 add_library(SharkEngine ${ENGINE_SOURCES})
 add_library(SharkEngine::SharkEngine ALIAS SharkEngine)
-
-target_compile_features(SharkEngine PUBLIC cxx_std_26)
 
 target_include_directories(SharkEngine PUBLIC src)
 target_link_libraries(SharkEngine PUBLIC
