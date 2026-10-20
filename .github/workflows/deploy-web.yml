@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
@@ -38,9 +36,9 @@ jobs:
       - name: Prepare Web Assets
         run: |
           mkdir -p dist
-          cp -r build/web-release/demo/* dist/
-          if [ -f dist/SharkEngineDemo.html ]; then
-            mv dist/SharkEngineDemo.html dist/index.html
+          cp -r build/web-release/example/* dist/
+          if [ -f dist/SharkEngineExample.html ]; then
+            mv dist/SharkEngineExample.html dist/index.html
           fi
 
       - name: Upload Pages Artifact

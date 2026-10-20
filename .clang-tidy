@@ -1,0 +1,29 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -readability-braces-around-statements,
+  -readability-named-parameter,
+  -readability-isolate-declaration,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-type-vararg,
+  -bugprone-signed-bitwise,
+  -cppcoreguidelines-pro-type-reinterpret-cast
+  
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(src|example)/'
+FormatStyle: none
+CheckOptions:
+  bugprone-easily-swappable-parameters.MinimumLength: '3'
+...

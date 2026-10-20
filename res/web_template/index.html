@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SharkEngine Web Demo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #000000;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            outline: none;
+            border: none;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+    <script type="text/javascript">
+        var Module = {
+            preRun: [],
+            postRun: [],
+            print: function (text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                console.log(text);
+            },
+            printErr: function (text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                console.error(text);
+            },
+            canvas: (function () {
+                var canvas = document.getElementById('canvas');
+                // Prevent right click menu on the canvas
+                canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); }, false);
+                return canvas;
+            })(),
+            setStatus: function (text) {
+                console.log("Status: " + text);
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function (left) {
+                this.totalDependencies = Math.max(this.totalDependencies, left);
+                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
+            }
+        };
+
+        Module.setStatus('Loading WebGL 2 Context...');
+        window.onerror = function (event) {
+            console.error(event);
+        };
+
+        function notifyEmrunExit() {
+            try {
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(window.location.href, '^exit^0');
+                } else {
+                    fetch(window.location.href, { method: 'POST', body: '^exit^0', keepalive: true });
+                }
+            } catch (e) {}
+        }
+        window.addEventListener('pagehide', notifyEmrunExit);
+        window.addEventListener('beforeunload', notifyEmrunExit);
+    </script>
+    {{{ SCRIPT }}}
+</body>
+
+</html>

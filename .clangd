@@ -1,0 +1,6 @@
+CompileFlags:
+  CompilationDatabase: build/desktop-dev
+
+Diagnostics:
+  ClangTidy:
+    FastCheckFilter: Loose
