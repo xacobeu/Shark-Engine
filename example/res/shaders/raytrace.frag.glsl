@@ -8,24 +8,19 @@ out vec4 fragColor;
 uniform float u_AspectRatio;
 uniform float u_Time;
 uniform vec3 u_CameraPos;
-uniform vec3 u_SpherePos;
-uniform float u_SphereRadius;
 uniform int u_EnableShadows;
 uniform int u_EnableReflections;
 uniform float u_ReflectionStrength;
 
-struct Sphere {
-    vec3 center;
-    float radius;
-    vec3 color;
-    int isMirror;
-};
+const int MAX_SPHERES = 64;
+uniform int u_SphereCount;
+uniform vec4 u_SpherePosRad[MAX_SPHERES];     // xyz = center, w = radius
+uniform vec4 u_SphereColShiny[MAX_SPHERES];   // xyz = color, w = shininess (0.0 to 1.0)
 
 float hitSphere(vec3 center, float radius, vec3 ro, vec3 rd) {
     vec3 oc = ro - center;
     float b = dot(oc, rd);
     float c = dot(oc, oc) - radius * radius;
-    if (c < 0.0) return -1.0;
     float discriminant = b * b - c;
     if (discriminant < 0.0) {
         return -1.0;
@@ -54,24 +49,20 @@ float checkerboard(vec3 p, float scale) {
 }
 
 vec3 trace(vec3 ro, vec3 rd) {
-    Sphere s1 = Sphere(u_SpherePos, u_SphereRadius, vec3(0.9, 0.1, 0.15), u_EnableReflections);
-    Sphere s2 = Sphere(vec3(1.5, 0.5, -6.0), 0.7, vec3(0.1, 0.8, 0.2), 0);
-    Sphere s3 = Sphere(vec3(-1.8, -0.2, -4.0), 0.5, vec3(0.1, 0.2, 0.8), 0);
-    
     vec3 color = vec3(0.0);
     float currentReflectance = 1.0;
     
     vec3 currentRo = ro;
     vec3 currentRd = rd;
 
-    for (int depth = 0; depth < 3; depth++) {
+    for (int depth = 0; depth < 4; depth++) {
         float minT = 1e20;
-        int hitType = 0; // 0 = sky, 1 = plane, 2 = sphere1, 3 = sphere2, 4 = sphere3
-        vec3 hitNormal;
+        int hitType = 0; // 0 = sky, 1 = plane, 2 = sphere
+        vec3 hitNormal = vec3(0.0);
         vec3 hitColor = vec3(0.0);
-        int hitMirror = 0;
+        float hitShininess = 0.0;
         
-        // Test plane
+        // Test ground plane
         float tPlane;
         vec3 planeNorm;
         if (hitPlane(currentRo, currentRd, tPlane, planeNorm)) {
@@ -80,70 +71,68 @@ vec3 trace(vec3 ro, vec3 rd) {
                 hitType = 1;
                 hitNormal = planeNorm;
                 vec3 hitPos = currentRo + currentRd * tPlane;
-                float c = checkerboard(hitPos, 1.0);
-                hitColor = c > 0.5 ? vec3(0.55) : vec3(0.3);
+                float c = checkerboard(hitPos, 0.75);
+                hitColor = c > 0.5 ? vec3(0.55) : vec3(0.22);
+                hitShininess = 0.15; // subtle reflective sheen on floor
             }
         }
         
-        // Test sphere 1
-        float tS1 = hitSphere(s1.center, s1.radius, currentRo, currentRd);
-        if (tS1 > 0.0 && tS1 < minT) {
-            minT = tS1;
-            hitType = 2;
-            hitNormal = normalize((currentRo + currentRd * tS1) - s1.center);
-            hitColor = s1.color;
-            hitMirror = s1.isMirror;
+        // Test all dynamic sphere instances
+        for (int i = 0; i < MAX_SPHERES; i++) {
+            if (i >= u_SphereCount) break;
+            vec4 posRad = u_SpherePosRad[i];
+            float t = hitSphere(posRad.xyz, posRad.w, currentRo, currentRd);
+            if (t > 0.0 && t < minT) {
+                minT = t;
+                hitType = 2;
+                hitNormal = normalize((currentRo + currentRd * t) - posRad.xyz);
+                hitColor = u_SphereColShiny[i].xyz;
+                hitShininess = u_SphereColShiny[i].w;
+            }
         }
         
-        // Test sphere 2
-        float tS2 = hitSphere(s2.center, s2.radius, currentRo, currentRd);
-        if (tS2 > 0.0 && tS2 < minT) {
-            minT = tS2;
-            hitType = 3;
-            hitNormal = normalize((currentRo + currentRd * tS2) - s2.center);
-            hitColor = s2.color;
-            hitMirror = s2.isMirror;
-        }
-        
-        // Test sphere 3
-        float tS3 = hitSphere(s3.center, s3.radius, currentRo, currentRd);
-        if (tS3 > 0.0 && tS3 < minT) {
-            minT = tS3;
-            hitType = 4;
-            hitNormal = normalize((currentRo + currentRd * tS3) - s3.center);
-            hitColor = s3.color;
-            hitMirror = s3.isMirror;
-        }
-        
+        // Sky background
         if (hitType == 0) {
             float t = 0.5 * (currentRd.y + 1.0);
-            vec3 skyColor = (1.0 - t) * vec3(1.0) + t * vec3(0.5, 0.7, 1.0);
+            vec3 skyColor = (1.0 - t) * vec3(1.0) + t * vec3(0.45, 0.68, 0.98);
+            vec3 sunDir = normalize(vec3(2.0, 6.0, 1.0));
+            float sunSpec = pow(max(dot(currentRd, sunDir), 0.0), 48.0);
+            skyColor += vec3(1.0, 0.95, 0.8) * sunSpec * 1.2;
             color += currentReflectance * skyColor;
             break;
         }
         
         vec3 hitPoint = currentRo + currentRd * minT;
         
+        // Shadow occlusion rays
         float shadowMult = 1.0;
         if (u_EnableShadows != 0) {
             vec3 lightDir = normalize(vec3(2.0, 6.0, 1.0));
-            vec3 shadowRo = hitPoint + hitNormal * 0.001;
-            
-            if (hitSphere(s1.center, s1.radius, shadowRo, lightDir) > 0.0 ||
-                hitSphere(s2.center, s2.radius, shadowRo, lightDir) > 0.0 ||
-                hitSphere(s3.center, s3.radius, shadowRo, lightDir) > 0.0) {
-                shadowMult = 0.25;
+            vec3 shadowRo = hitPoint + hitNormal * 0.002;
+            for (int i = 0; i < MAX_SPHERES; i++) {
+                if (i >= u_SphereCount) break;
+                vec4 posRad = u_SpherePosRad[i];
+                if (hitSphere(posRad.xyz, posRad.w, shadowRo, lightDir) > 0.0) {
+                    shadowMult = 0.25;
+                    break;
+                }
             }
         }
         
+        // Direct diffuse + Blinn-Phong specular highlight for shiny balls
         vec3 lightDir = normalize(vec3(2.0, 6.0, 1.0));
+        vec3 viewDir = -currentRd;
+        vec3 halfDir = normalize(lightDir + viewDir);
         float diff = max(dot(hitNormal, lightDir), 0.0);
-        vec3 localColor = hitColor * (diff * shadowMult * 0.8 + 0.2);
+        float spec = pow(max(dot(hitNormal, halfDir), 0.0), 32.0) * hitShininess;
+        vec3 localColor = hitColor * (diff * shadowMult * 0.8 + 0.15) + vec3(spec * shadowMult * 0.85);
         
-        if (hitMirror != 0) {
-            color += currentReflectance * localColor * (1.0 - u_ReflectionStrength);
-            currentReflectance *= u_ReflectionStrength;
-            currentRo = hitPoint + hitNormal * 0.001;
+        // Reflection ray bounce
+        float effectiveReflectance = hitShininess * u_ReflectionStrength;
+        if (u_EnableReflections != 0 && effectiveReflectance > 0.01) {
+            color += currentReflectance * localColor * (1.0 - effectiveReflectance);
+            currentReflectance *= effectiveReflectance;
+            currentRo = hitPoint + hitNormal * 0.002;
             currentRd = reflect(currentRd, hitNormal);
         } else {
             color += currentReflectance * localColor;
@@ -160,7 +149,7 @@ void main() {
     vec3 rd = normalize(vec3(ndc.x * u_AspectRatio, ndc.y, -1.0));
 
     vec3 col = trace(ro, rd);
-    col = pow(col, vec3(1.0 / 2.2));
+    col = pow(col, vec3(1.0 / 2.2)); // Gamma correction
 
     fragColor = vec4(col, 1.0);
 }

@@ -121,6 +121,10 @@ void Shader::setVec4(const std::string& name, float x, float y, float z, float w
     glUniform4f(uniform(name), x, y, z, w);
 }
 
+void Shader::setVec4Array(const std::string& name, const float* values, std::size_t count) {
+    glUniform4fv(uniform(name), static_cast<GLsizei>(count), values);
+}
+
 std::string Shader::loadTextFile(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {

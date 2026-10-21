@@ -34,6 +34,7 @@ public:
     void setVec2(const std::string& name, float x, float y) override;
     void setVec3(const std::string& name, float x, float y, float z) override;
     void setVec4(const std::string& name, float x, float y, float z, float w) override;
+    void setVec4Array(const std::string& name, const float* values, std::size_t count) override;
 
     [[nodiscard]] GLuint id() const { return program; }
 
