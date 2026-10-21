@@ -48,9 +48,30 @@ public:
         return this;
     }
 
+    OrbitCamera* setRotateButton(int button) {
+        this->rotateButton = button;
+        return this;
+    }
+    OrbitCamera* setPanButton(int button) {
+        this->panButton = button;
+        return this;
+    }
+    OrbitCamera* setRotationEnabled(bool enabled) {
+        this->rotationEnabled = enabled;
+        return this;
+    }
+    OrbitCamera* setPanEnabled(bool enabled) {
+        this->panEnabled = enabled;
+        return this;
+    }
+
     // Orbit getters.
     [[nodiscard]] Vector3 getTarget() const { return target; }
     [[nodiscard]] float   getDistance() const { return distance; }
+    [[nodiscard]] int     getRotateButton() const { return rotateButton; }
+    [[nodiscard]] int     getPanButton() const { return panButton; }
+    [[nodiscard]] bool    isRotationEnabled() const { return rotationEnabled; }
+    [[nodiscard]] bool    isPanEnabled() const { return panEnabled; }
 
     // Camera matrices.
     [[nodiscard]] Matrix4 getViewMatrix() const override {
@@ -70,6 +91,11 @@ public:
 private:
     Vector3 target{.x = 0.0f, .y = 0.0f, .z = 0.0f};
     float   distance = 10.0f;
+
+    int  rotateButton    = 0; // GLFW_MOUSE_BUTTON_LEFT (0)
+    int  panButton       = 1; // GLFW_MOUSE_BUTTON_RIGHT (1)
+    bool rotationEnabled = true;
+    bool panEnabled      = true;
 
     bool   isDragging = false;
     double lastMouseX = 0.0;

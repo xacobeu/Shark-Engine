@@ -10,6 +10,9 @@ void Renderer::init(IRenderDevice* renderDevice) {
     if (!defaultShader) {
         defaultShader = device->createShader("res/shaders/default.vert.glsl", "res/shaders/default.frag.glsl");
     }
+    if (!instancedShader) {
+        instancedShader = device->createShader("res/shaders/instanced.vert.glsl", "res/shaders/instanced.frag.glsl");
+    }
 }
 
 void Renderer::begin(int width, int height) {
@@ -36,7 +39,9 @@ void Renderer::render(const Scene& scene, int width, int height) {
     Matrix4 projection = camera->getProjectionMatrix(aspect);
     Matrix4 view       = camera->getViewMatrix();
     Matrix4 viewProj   = projection * view;
+    currentViewProj    = viewProj;
 
+    // Render standard individual entities (uninstanced)
     for (const auto& entity : scene.getEntities()) {
         if (!entity || !entity->getMesh()) {
             continue;
@@ -70,6 +75,47 @@ void Renderer::render(const Scene& scene, int width, int height) {
         if (hasTexture) {
             entity->getTexture()->unbind();
         }
+    }
+
+    // Render instanced entities (opt-in 1-draw-call per group)
+    for (const auto& instancedEntity : scene.getInstancedEntities()) {
+        if (!instancedEntity || !instancedEntity->getMesh() || instancedEntity->getInstanceCount() == 0) {
+            continue;
+        }
+
+        drawInstanced(instancedEntity->getMesh(), instancedEntity->getInstances(), instancedEntity->getTexture());
+    }
+}
+
+void Renderer::drawInstanced(
+    const std::shared_ptr<Mesh>& mesh, std::span<const InstanceData> instances, const std::shared_ptr<ITexture>& texture
+) {
+    if (device == nullptr || !mesh || instances.empty() || !instancedShader) {
+        return;
+    }
+
+    const auto& buffers = uploadMeshIfNeeded(mesh);
+
+    bool hasTexture = (texture != nullptr);
+    if (hasTexture) {
+        texture->bind(0);
+    }
+
+    instancedShader->bind();
+    instancedShader->setInt("u_HasTexture", hasTexture ? 1 : 0);
+    instancedShader->setInt("u_Texture", 0);
+    instancedShader->setMat4("u_ViewProjection", currentViewProj.data());
+
+    buffers.vbo->bind();
+    buffers.ebo->bind();
+
+    device->drawIndexedInstanced(
+        static_cast<unsigned int>(buffers.ebo->getIndexCount()), static_cast<unsigned int>(instances.size()),
+        instances.data(), instances.size_bytes()
+    );
+
+    if (hasTexture) {
+        texture->unbind();
     }
 }
 

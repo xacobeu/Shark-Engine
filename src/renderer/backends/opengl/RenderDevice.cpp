@@ -1,5 +1,9 @@
 #include "renderer/backends/opengl/RenderDevice.hpp"
 
+#include <bit>
+#include <cstddef>
+#include <cstdint>
+
 #include "renderer/backends/opengl/IndexBuffer.hpp"
 #include "renderer/backends/opengl/Shader.hpp"
 #include "renderer/backends/opengl/Texture.hpp"
@@ -45,12 +49,63 @@ void RenderDevice::setViewport(int x, int y, int width, int height) {
     glViewport(x, y, width, height);
 }
 
+namespace {
+[[nodiscard]] auto bufferOffset(std::size_t offset) noexcept -> const void* {
+    return std::bit_cast<const void*>(static_cast<std::uintptr_t>(offset));
+}
+} // namespace
+
 void RenderDevice::drawIndexed(unsigned int indexCount) {
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, nullptr);
 }
 
 void RenderDevice::drawArrays(unsigned int vertexCount) {
     glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+}
+
+void RenderDevice::drawIndexedInstanced(
+    unsigned int indexCount, unsigned int instanceCount, const void* instanceData, std::size_t instanceDataSize
+) {
+    if (instanceCount == 0 || (instanceData == nullptr) || instanceDataSize == 0) {
+        return;
+    }
+
+    instanceVbo.create();
+    instanceVbo.bind();
+    instanceVbo.data(static_cast<GLsizeiptr>(instanceDataSize), instanceData, GL_DYNAMIC_DRAW);
+
+    constexpr auto stride = static_cast<GLsizei>(sizeof(float) * 20); // 4x4 matrix (16 floats) + vec4 color (4 floats)
+
+    // Locations 4, 5, 6, 7: mat4 modelMatrix (4 vec4s)
+    for (unsigned int i = 0; i < 4; ++i) {
+        GLuint loc = 4 + i;
+        glEnableVertexAttribArray(loc);
+        glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, stride, bufferOffset(sizeof(float) * 4 * i));
+        glVertexAttribDivisor(loc, 1);
+    }
+
+    // Location 8: vec4 color
+    glEnableVertexAttribArray(8);
+    glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, stride, bufferOffset(sizeof(float) * 16));
+    glVertexAttribDivisor(8, 1);
+
+    glDrawElementsInstanced(
+        GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, nullptr, static_cast<GLsizei>(instanceCount)
+    );
+
+    // Clean up divisors and disable instance attributes so standard draws are unaffected
+    for (unsigned int i = 0; i < 4; ++i) {
+        glVertexAttribDivisor(4 + i, 0);
+        glDisableVertexAttribArray(4 + i);
+    }
+    glVertexAttribDivisor(8, 0);
+    glDisableVertexAttribArray(8);
+
+    instanceVbo.unbind();
+}
+
+void RenderDevice::drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) {
+    glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount), static_cast<GLsizei>(instanceCount));
 }
 
 void RenderDevice::setVSync(bool enabled) {

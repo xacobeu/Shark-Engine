@@ -147,6 +147,8 @@ void Window::_cursorPosCallback(GLFWwindow* win, double x, double y) {
 
 void Window::_scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
     ImGui_ImplGlfw_ScrollCallback(win, xoffset, yoffset);
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
 
     auto* window = static_cast<Window*>(glfwGetWindowUserPointer(win));
     if (window != nullptr) {

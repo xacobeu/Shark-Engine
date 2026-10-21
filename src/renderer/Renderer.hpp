@@ -21,6 +21,13 @@ public:
 
     void render(const Scene& scene, int width, int height);
 
+    void drawInstanced(
+        const std::shared_ptr<Mesh>& mesh, std::span<const InstanceData> instances,
+        const std::shared_ptr<ITexture>& texture = nullptr
+    );
+
+    void clearCache() { meshCache.clear(); }
+
 private:
     struct MeshBuffers {
         std::shared_ptr<IVertexBuffer> vbo;
@@ -31,5 +38,7 @@ private:
 
     IRenderDevice*                               device = nullptr;
     std::shared_ptr<IShader>                     defaultShader;
+    std::shared_ptr<IShader>                     instancedShader;
+    Matrix4                                      currentViewProj = Matrix4::identity();
     std::unordered_map<const Mesh*, MeshBuffers> meshCache;
 };

@@ -8,7 +8,17 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "desktop-release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/desktop-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -23,6 +33,7 @@
   ],
   "buildPresets": [
     { "name": "desktop", "configurePreset": "desktop" },
+    { "name": "desktop-release", "configurePreset": "desktop-release" },
     { "name": "web", "configurePreset": "web" }
   ],
   "workflowPresets": [
@@ -31,6 +42,13 @@
       "steps": [
         { "type": "configure", "name": "desktop" },
         { "type": "build", "name": "desktop" }
+      ]
+    },
+    {
+      "name": "desktop-release",
+      "steps": [
+        { "type": "configure", "name": "desktop-release" },
+        { "type": "build", "name": "desktop-release" }
       ]
     },
     {

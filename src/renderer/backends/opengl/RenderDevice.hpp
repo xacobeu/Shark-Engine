@@ -4,6 +4,7 @@
 #include <string>
 
 #include "renderer/backends/IRenderDevice.hpp"
+#include "renderer/backends/opengl/Object.hpp"
 
 namespace GL {
 
@@ -23,7 +24,14 @@ public:
     void setViewport(int x, int y, int width, int height) override;
     void drawIndexed(unsigned int indexCount) override;
     void drawArrays(unsigned int vertexCount) override;
+    void drawIndexedInstanced(
+        unsigned int indexCount, unsigned int instanceCount, const void* instanceData, std::size_t instanceDataSize
+    ) override;
+    void drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) override;
     void setVSync(bool enabled) override;
+
+private:
+    GL::VertexBufferObject instanceVbo;
 };
 
 } // namespace GL

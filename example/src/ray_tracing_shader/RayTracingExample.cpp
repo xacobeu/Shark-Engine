@@ -12,11 +12,11 @@
 
 void RayTracingExample::onAttach() {
     std::println("[DEBUG] GPU Raytracer layer attached");
+    getApp()->setScene(nullptr);
 
     raytraceShader =
         getApp()->getDevice()->createShader("res/shaders/raytrace.vert.glsl", "res/shaders/raytrace.frag.glsl");
 
-    // Quad geometry (NDC covering [-1, 1])
     std::array<Vertex, 6> quadVertices = {
         Vertex{
             .position = Vector3{.x = -1.0f, .y = 1.0f, .z = 0.0f},
@@ -60,10 +60,14 @@ void RayTracingExample::onAttach() {
     quadVbo = getApp()->getDevice()->createVertexBuffer(std::span{quadVertices});
 }
 
+void RayTracingExample::onDetach() {
+    raytraceShader.reset();
+    quadVbo.reset();
+}
+
 void RayTracingExample::onUpdate(float deltaTime) {
     time += deltaTime;
 
-    // Dynamic sphere motion
     sphere1Pos.x = std::sin(time) * 1.5f;
     sphere1Pos.y = std::cos(time * 1.5f) * 0.5f;
 }
@@ -88,11 +92,10 @@ void RayTracingExample::onRender(Renderer&) {
     quadVbo->unbind();
     raytraceShader->unbind();
 
+    ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    ImGui::Begin("GPU Raytracer Settings");
+    ImGui::Begin("Controls");
 
-    ImGui::Text("FPS: %.1f", static_cast<double>(ImGui::GetIO().Framerate));
     ImGui::Checkbox("Enable Shadows", &enableShadows);
     ImGui::Checkbox("Enable Reflections", &enableReflections);
     if (enableReflections) {

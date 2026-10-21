@@ -24,6 +24,8 @@ add_compile_options(
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wextra>
+    $<$<AND:$<NOT:$<BOOL:${EMSCRIPTEN}>>,$<CONFIG:Release>>:-march=native>
+    $<$<AND:$<NOT:$<BOOL:${EMSCRIPTEN}>>,$<CONFIG:RelWithDebInfo>>:-march=native>
 )
 
 # Core Engine Target

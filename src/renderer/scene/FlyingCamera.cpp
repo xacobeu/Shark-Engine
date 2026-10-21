@@ -4,35 +4,40 @@
 #include <cmath>
 #include <numbers>
 
+#include "imgui.h"
 #include <GLFW/glfw3.h>
 
 #include "Application.hpp"
 
 void FlyingCamera::update(Application* app, float deltaTime) {
+    const bool imguiWantsMouse = (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
+
     double mouseX = app->getCursorX();
     double mouseY = app->getCursorY();
 
     // Free look rotation
     if (app->isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) || app->isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
         if (!isDragging) {
-            isDragging = true;
+            if (!imguiWantsMouse) {
+                isDragging = true;
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+            }
+        } else {
+            double  dx  = mouseX - lastMouseX;
+            double  dy  = mouseY - lastMouseY;
+            Vector3 rot = getRotation();
+            rot.y += static_cast<float>(dx) * 0.15f;
+            rot.x -= static_cast<float>(dy) * 0.15f;
+
+            rot.x = std::min(rot.x, 89.0f);
+            rot.x = std::max(rot.x, -89.0f);
+
+            setRotation(rot);
+
             lastMouseX = mouseX;
             lastMouseY = mouseY;
         }
-
-        double  dx  = mouseX - lastMouseX;
-        double  dy  = mouseY - lastMouseY;
-        Vector3 rot = getRotation();
-        rot.y += static_cast<float>(dx) * 0.15f;
-        rot.x -= static_cast<float>(dy) * 0.15f;
-
-        rot.x = std::min(rot.x, 89.0f);
-        rot.x = std::max(rot.x, -89.0f);
-
-        setRotation(rot);
-
-        lastMouseX = mouseX;
-        lastMouseY = mouseY;
     } else {
         isDragging = false;
     }

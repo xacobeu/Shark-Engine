@@ -9,6 +9,7 @@
 class SpinningCubeExample : public Layer {
 public:
     void onAttach() override;
+    void onDetach() override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
 

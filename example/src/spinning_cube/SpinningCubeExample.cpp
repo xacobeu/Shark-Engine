@@ -1,15 +1,13 @@
 #include "SpinningCubeExample.hpp"
 
-#include <iostream>
 #include <memory>
-
-#include "imgui.h"
+#include <print>
 
 #include "Application.hpp"
 #include "renderer/geometry/MeshFactory.hpp"
 
 void SpinningCubeExample::onAttach() {
-    std::cout << "[DEBUG] SpinningCubeExample layer attached" << '\n';
+    std::println("[DEBUG] SpinningCubeExample layer attached");
 
     getApp()->setScene(&scene);
 
@@ -22,6 +20,15 @@ void SpinningCubeExample::onAttach() {
                ->setTexture(getApp()->getDevice()->createTexture("res/textures/scifi_crate.png"));
 }
 
+void SpinningCubeExample::onDetach() {
+    if ((getApp() != nullptr) && getApp()->getScene() == &scene) {
+        getApp()->setScene(nullptr);
+    }
+    cube   = nullptr;
+    camera = nullptr;
+    scene.clear();
+}
+
 void SpinningCubeExample::onUpdate(float deltaTime) {
     elapsed += deltaTime;
     ++frameCount;
@@ -31,16 +38,4 @@ void SpinningCubeExample::onUpdate(float deltaTime) {
 
 void SpinningCubeExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
-
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    ImGui::Begin("DEBUG");
-    ImGui::Text("Elapsed: %.2f s", static_cast<double>(elapsed));
-    ImGui::Text("Frames: %d", frameCount);
-    ImGui::Text("Delta: %.4f s", static_cast<double>(getApp()->getDeltaTime()));
-
-    if (ImGui::Button("Close App")) {
-        getApp()->close();
-    }
-
-    ImGui::End();
 }

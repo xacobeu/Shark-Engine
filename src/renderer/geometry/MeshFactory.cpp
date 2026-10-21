@@ -142,3 +142,68 @@ Mesh::MeshData MeshFactory::createSphereMesh(const int resolution, const Vector3
 
     return mesh;
 }
+
+Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickness, const Vector3& color) {
+    Mesh::MeshData mesh;
+    float          halfX = size.x * 0.5f;
+    float          halfY = size.y * 0.5f;
+    float          halfZ = size.z * 0.5f;
+    float          ht    = thickness * 0.5f;
+
+    auto addCuboid = [&](Vector3 center, Vector3 extents, Vector3 barColor) {
+        static constexpr std::array<Vector3, 6> faceNormals = {Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.0f, 0.0f, -1.0f},
+                                                               Vector3{0.0f, 1.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f},
+                                                               Vector3{1.0f, 0.0f, 0.0f}, Vector3{-1.0f, 0.0f, 0.0f}};
+
+        static constexpr std::array<std::array<Vector3, 4>, 6> faceOffsets = {
+            std::array<Vector3, 4>{Vector3{-1, -1, 1}, Vector3{1, -1, 1}, Vector3{1, 1, 1}, Vector3{-1, 1, 1}},
+            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{-1, 1, -1}, Vector3{1, 1, -1}, Vector3{1, -1, -1}},
+            std::array<Vector3, 4>{Vector3{-1, 1, -1}, Vector3{-1, 1, 1}, Vector3{1, 1, 1}, Vector3{1, 1, -1}},
+            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{1, -1, -1}, Vector3{1, -1, 1}, Vector3{-1, -1, 1}},
+            std::array<Vector3, 4>{Vector3{1, -1, -1}, Vector3{1, 1, -1}, Vector3{1, 1, 1}, Vector3{1, -1, 1}},
+            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{-1, -1, 1}, Vector3{-1, 1, 1}, Vector3{-1, 1, -1}}
+        };
+
+        for (std::size_t f = 0; f < 6; ++f) {
+            auto faceBase = static_cast<unsigned int>(mesh.vertices.size());
+            for (std::size_t v = 0; v < 4; ++v) {
+                Vector3 p = center + Vector3{
+                                         faceOffsets[f][v].x * extents.x, faceOffsets[f][v].y * extents.y,
+                                         faceOffsets[f][v].z * extents.z
+                                     };
+                mesh.vertices.push_back(
+                    Vertex{.position = p, .normal = faceNormals[f], .uv = Vector2{0.0f, 0.0f}, .color = barColor}
+                );
+            }
+            mesh.triangles.push_back(faceBase + 0);
+            mesh.triangles.push_back(faceBase + 1);
+            mesh.triangles.push_back(faceBase + 2);
+            mesh.triangles.push_back(faceBase + 2);
+            mesh.triangles.push_back(faceBase + 3);
+            mesh.triangles.push_back(faceBase + 0);
+        }
+    };
+
+    // 4 edges along X
+    addCuboid({0.0f, -halfY, -halfZ}, {halfX, ht, ht}, color);
+    addCuboid({0.0f, halfY, -halfZ}, {halfX, ht, ht}, color);
+    addCuboid({0.0f, -halfY, halfZ}, {halfX, ht, ht}, color);
+    addCuboid({0.0f, halfY, halfZ}, {halfX, ht, ht}, color);
+
+    // 4 edges along Y
+    addCuboid({-halfX, 0.0f, -halfZ}, {ht, halfY, ht}, color);
+    addCuboid({halfX, 0.0f, -halfZ}, {ht, halfY, ht}, color);
+    addCuboid({-halfX, 0.0f, halfZ}, {ht, halfY, ht}, color);
+    addCuboid({halfX, 0.0f, halfZ}, {ht, halfY, ht}, color);
+
+    // 4 edges along Z
+    addCuboid({-halfX, -halfY, 0.0f}, {ht, ht, halfZ}, color);
+    addCuboid({halfX, -halfY, 0.0f}, {ht, ht, halfZ}, color);
+    addCuboid({-halfX, halfY, 0.0f}, {ht, ht, halfZ}, color);
+    addCuboid({halfX, halfY, 0.0f}, {ht, ht, halfZ}, color);
+
+    // Subtle bottom base grid / floor slab for depth
+    addCuboid({0.0f, -halfY - (ht * 0.5f), 0.0f}, {halfX, ht * 0.5f, halfZ}, color * 0.45f);
+
+    return mesh;
+}

@@ -19,7 +19,8 @@ Checks: >
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-pro-type-vararg,
   -bugprone-signed-bitwise,
-  -cppcoreguidelines-pro-type-reinterpret-cast
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -modernize-use-designated-initializers
   
 WarningsAsErrors: ''
 HeaderFilterRegex: '^(src|example)/'

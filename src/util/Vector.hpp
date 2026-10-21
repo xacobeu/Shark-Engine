@@ -124,7 +124,7 @@ template <typename T> Vec<3, T> cross(const Vec<3, T>& a, const Vec<3, T>& b) {
     return {(a[1] * b[2]) - (a[2] * b[1]), (a[2] * b[0]) - (a[0] * b[2]), (a[0] * b[1]) - (a[1] * b[0])};
 }
 
-template <typename T> struct Vec<4, T> {
+template <typename T> struct alignas(16) Vec<4, T> {
     T x{};
     T y{};
     T z{};

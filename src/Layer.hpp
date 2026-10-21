@@ -18,6 +18,7 @@ public:
 
     virtual void onUpdate(float) {}
     virtual void onRender(Renderer&) {}
+    void         setApp(Application* application) noexcept { app = application; }
 
 protected:
     Layer() = default;

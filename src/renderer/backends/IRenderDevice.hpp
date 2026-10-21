@@ -36,7 +36,11 @@ public:
     virtual void setViewport(int x, int y, int width, int height) = 0;
     virtual void drawIndexed(unsigned int indexCount)             = 0;
     virtual void drawArrays(unsigned int vertexCount)             = 0;
-    virtual void setVSync(bool enabled)                           = 0;
+    virtual void drawIndexedInstanced(
+        unsigned int indexCount, unsigned int instanceCount, const void* instanceData, std::size_t instanceDataSize
+    )                                                                                      = 0;
+    virtual void drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) = 0;
+    virtual void setVSync(bool enabled)                                                    = 0;
 
     [[nodiscard]] static std::unique_ptr<IRenderDevice> create(GraphicsAPI api);
 
