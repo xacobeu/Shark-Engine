@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "util/ResourcePath.hpp"
+
 namespace GL {
 
 Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) : program(glCreateProgram()) {
@@ -126,16 +128,7 @@ void Shader::setVec4Array(const std::string& name, const float* values, std::siz
 }
 
 std::string Shader::loadTextFile(const std::string& path) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        file.open("build/desktop-dev/example/" + path);
-    }
-    if (!file.is_open()) {
-        file.open("example/" + path);
-    }
-    if (!file.is_open() && !path.empty() && path.at(0) != '/') {
-        file.open("/" + path);
-    }
+    std::ifstream file(resolveResourcePath(path));
     if (!file.is_open()) {
         std::println(stderr, "[ERROR] Failed to open file: {}", path);
         throw std::runtime_error("Failed to open shader file: " + path);

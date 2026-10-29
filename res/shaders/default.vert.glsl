@@ -8,11 +8,14 @@ out vec3 v_FragPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 
-uniform mat4 u_Transform;
+uniform mat4 u_Model;
+uniform mat4 u_NormalMatrix;
+uniform mat4 u_ViewProjection;
 
 void main() {
-    v_FragPos = aPos;
-    v_Normal = aNormal;
+    vec4 worldPos = u_Model * vec4(aPos, 1.0);
+    v_FragPos = worldPos.xyz;
+    v_Normal = mat3(u_NormalMatrix) * aNormal;
     v_TexCoord = aUV;
-    gl_Position = u_Transform * vec4(aPos, 1.0);
+    gl_Position = u_ViewProjection * worldPos;
 }

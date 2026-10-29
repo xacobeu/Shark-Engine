@@ -9,8 +9,8 @@ public:
     Window(int width, int height, const char* title);
     ~Window();
 
-    Window(const Window&)            = delete;
-    Window& operator=(const Window&) = delete;
+    Window(const Window&)            = delete ("owns the GLFW window; move it instead");
+    Window& operator=(const Window&) = delete ("owns the GLFW window; move it instead");
 
     Window(Window&& other) noexcept;
     Window& operator=(Window&& other) noexcept;

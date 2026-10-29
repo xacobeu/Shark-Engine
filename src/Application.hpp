@@ -14,6 +14,9 @@ struct Config {
     const char* title  = "Application";
     bool        vsync  = true;
     GraphicsAPI api    = GraphicsAPI::OpenGL;
+
+    float fixedTimestep = 1.0f / 60.0f;
+    int   maxFixedSteps = 4;
 };
 
 class Application {
@@ -22,12 +25,12 @@ public:
     ~Application() = default;
 
     // Disable copy
-    Application(const Application&)                    = delete;
-    auto operator=(const Application&) -> Application& = delete;
+    Application(const Application&)                    = delete ("owns the window and GL context");
+    auto operator=(const Application&) -> Application& = delete ("owns the window and GL context");
 
     // Disable move
-    Application(Application&&)                    = delete;
-    auto operator=(Application&&) -> Application& = delete;
+    Application(Application&&)                    = delete ("layers point back to their Application");
+    auto operator=(Application&&) -> Application& = delete ("layers point back to their Application");
 
     void run();
     void runStep();
@@ -43,6 +46,9 @@ public:
 
     float getElapsedTime() const { return elapsedTime; }
     float getDeltaTime() const { return deltaTime; }
+
+    float getFixedAlpha() const { return fixedAlpha; }
+    float getFixedTimestep() const { return config.fixedTimestep; }
 
     void updateTime(float now);
 
@@ -72,6 +78,11 @@ private:
     float elapsedTime   = 0.0f;
     float deltaTime     = 0.0f;
     float lastFrameTime = 0.0f;
+
+    float fixedAccumulator = 0.0f;
+    float fixedAlpha       = 0.0f;
+
+    void runFixedSteps();
 
 public:
     template <typename T>

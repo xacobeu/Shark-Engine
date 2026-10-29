@@ -27,7 +27,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             ninja-build \
-            clang \
             libtbb-dev \
             libgl1-mesa-dev \
             libx11-dev \
@@ -38,6 +37,9 @@ jobs:
             libwayland-dev \
             libxkbcommon-dev \
             wayland-protocols
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 21
+          sudo ln -sf /usr/bin/clang-21 /usr/local/bin/clang
+          sudo ln -sf /usr/bin/clang++-21 /usr/local/bin/clang++
 
       - name: Build
         env:

@@ -19,8 +19,8 @@ public:
     ~Shader() override;
 
     // Disable copy
-    Shader(const Shader&)            = delete;
-    Shader& operator=(const Shader&) = delete;
+    Shader(const Shader&)            = delete ("would double-delete the GL object; move it");
+    Shader& operator=(const Shader&) = delete ("would double-delete the GL object; move it");
 
     Shader(Shader&&) noexcept            = default;
     Shader& operator=(Shader&&) noexcept = default;

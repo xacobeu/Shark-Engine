@@ -5,8 +5,8 @@ class IIndexBuffer {
 public:
     virtual ~IIndexBuffer() = default;
 
-    IIndexBuffer(const IIndexBuffer&)            = delete;
-    IIndexBuffer& operator=(const IIndexBuffer&) = delete;
+    IIndexBuffer(const IIndexBuffer&)            = delete ("GPU resources are shared via std::shared_ptr");
+    IIndexBuffer& operator=(const IIndexBuffer&) = delete ("GPU resources are shared via std::shared_ptr");
 
     IIndexBuffer(IIndexBuffer&&)            = default;
     IIndexBuffer& operator=(IIndexBuffer&&) = default;

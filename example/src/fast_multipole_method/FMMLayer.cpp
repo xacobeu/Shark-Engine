@@ -47,6 +47,7 @@ void FMMLayer::onAttach() {
 
 void FMMLayer::onDetach() {
     particles.clear();
+    previousPositions.clear();
     particleGroup = nullptr;
 }
 
@@ -71,7 +72,8 @@ void FMMLayer::resetSimulation(std::size_t count) {
 
     solve();
     observedErrorPct = fmm.computeObservedError(particles, G_CONSTANT, ERROR_SAMPLE_COUNT);
-    frameCount       = 0;
+    stepCount        = 0;
+    previousPositions.clear();
 }
 
 void FMMLayer::solve() {
@@ -94,33 +96,47 @@ float FMMLayer::measureColorMaxSpeed() const {
     return std::max(rms * COLOR_RMS_MULTIPLIER, 1e-3f);
 }
 
-void FMMLayer::onUpdate(float deltaTime) {
+void FMMLayer::onFixedUpdate(float fixedDt) {
     if (isPaused) {
         return;
     }
 
-    const float dt = std::clamp(deltaTime, 0.001f, 0.02f);
+    previousPositions.resize(particles.size());
+    shark::exec::for_each_index(shark::exec::par_unseq, particles.size(), [this](std::size_t i) {
+        previousPositions[i] = particles[i].position;
+    });
 
     const auto startTime = std::chrono::steady_clock::now();
     solve();
     lastFmmTimeMs = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - startTime).count();
 
-    if (++frameCount >= ERROR_UPDATE_INTERVAL_FRAMES) {
+    if (++stepCount >= ERROR_UPDATE_INTERVAL_STEPS) {
         observedErrorPct = fmm.computeObservedError(particles, G_CONSTANT, ERROR_SAMPLE_COUNT);
-        frameCount       = 0;
+        stepCount        = 0;
+    }
+
+    shark::exec::for_each(shark::exec::par_unseq, particles, [fixedDt](fmm::Particle& p) { p.integrate(fixedDt); });
+}
+
+void FMMLayer::onUpdate(float deltaTime) {
+    if (isPaused) {
+        return;
     }
 
     // Ease the color range toward the current speed distribution so it adapts without flickering
-    const float smoothing = 1.0f - std::exp(-dt / COLOR_RANGE_SMOOTHING_SECONDS);
+    const float smoothing = 1.0f - std::exp(-deltaTime / COLOR_RANGE_SMOOTHING_SECONDS);
     colorMaxSpeed += (measureColorMaxSpeed() - colorMaxSpeed) * smoothing;
 
-    const float maxSpeed     = colorMaxSpeed;
-    auto&       instanceData = particleGroup->getInstancesMutable();
+    const bool  canInterpolate = previousPositions.size() == particles.size();
+    const float alpha          = getApp()->getFixedAlpha();
+    const float maxSpeed       = colorMaxSpeed;
+    auto&       instanceData   = particleGroup->getInstancesMutable();
     shark::exec::for_each_index(
-        shark::exec::par_unseq, particles.size(), [this, dt, maxSpeed, &instanceData](std::size_t i) {
-            auto& p = particles[i];
-            p.integrate(dt);
-            instanceData[i].modelMatrix = Matrix4::translateScale(p.position, PARTICLE_RADIUS);
+        shark::exec::par_unseq, particles.size(),
+        [this, canInterpolate, alpha, maxSpeed, &instanceData](std::size_t i) {
+            const auto&   p             = particles[i];
+            const Vector3 position      = canInterpolate ? lerp(previousPositions[i], p.position, alpha) : p.position;
+            instanceData[i].modelMatrix = Matrix4::translateScale(position, PARTICLE_RADIUS);
             instanceData[i].color       = magma(p.velocity.length() / maxSpeed);
         }
     );
@@ -176,7 +192,7 @@ void FMMLayer::renderImGui() {
             solve();
             observedErrorPct = fmm.computeObservedError(particles, G_CONSTANT, ERROR_SAMPLE_COUNT);
         } else {
-            frameCount = ERROR_UPDATE_INTERVAL_FRAMES;
+            stepCount = ERROR_UPDATE_INTERVAL_STEPS;
         }
     }
 

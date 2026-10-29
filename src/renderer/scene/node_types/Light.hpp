@@ -21,14 +21,26 @@ public:
         self.intensity = newIntensity;
         return &self;
     }
+    auto* setDirection(this auto& self, Vector3 newDirection) {
+        self.direction = normalize(newDirection);
+        return &self;
+    }
+    auto* setRange(this auto& self, float newRange) {
+        self.range = newRange;
+        return &self;
+    }
 
     // Light getters.
     [[nodiscard]] const Vector4& getColor() const { return color; }
     [[nodiscard]] LightType      getType() const { return type; }
     [[nodiscard]] float          getIntensity() const { return intensity; }
+    [[nodiscard]] const Vector3& getDirection() const { return direction; }
+    [[nodiscard]] float          getRange() const { return range; }
 
 private:
     LightType type = LightType::Point;
     Vector4   color{.x = 1.0f, .y = 1.0f, .z = 1.0f, .w = 1.0f};
+    Vector3   direction = normalize(Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f});
     float     intensity = 1.0f;
+    float     range     = 10.0f;
 };

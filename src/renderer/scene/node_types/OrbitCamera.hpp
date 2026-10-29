@@ -43,16 +43,19 @@ public:
     [[nodiscard]] bool           isPanEnabled() const { return panEnabled; }
 
     // Camera matrices.
-    [[nodiscard]] Matrix4 getViewMatrix() const override {
+    [[nodiscard]] Vector3 getEyePosition() const override {
         float pitchRad = getRotation().x * std::numbers::pi_v<float> / 180.0f;
         float yawRad   = getRotation().y * std::numbers::pi_v<float> / 180.0f;
 
-        Vector3 pos = {
+        return {
             .x = target.x + (distance * std::cos(pitchRad) * std::cos(yawRad)),
             .y = target.y + (distance * std::sin(pitchRad)),
             .z = target.z + (distance * std::cos(pitchRad) * std::sin(yawRad))
         };
-        return Matrix4::lookAt(pos, target, {.x = 0.0f, .y = 1.0f, .z = 0.0f});
+    }
+
+    [[nodiscard]] Matrix4 getViewMatrix() const override {
+        return Matrix4::lookAt(getEyePosition(), target, {.x = 0.0f, .y = 1.0f, .z = 0.0f});
     }
 
     void update(Application* app, float deltaTime) override;

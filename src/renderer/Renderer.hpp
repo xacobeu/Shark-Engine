@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
@@ -18,8 +19,8 @@ public:
     Renderer()  = default;
     ~Renderer() = default;
 
-    Renderer(const Renderer&)            = delete;
-    Renderer& operator=(const Renderer&) = delete;
+    Renderer(const Renderer&)            = delete ("owns GPU caches; pass it by reference");
+    Renderer& operator=(const Renderer&) = delete ("owns GPU caches; pass it by reference");
     Renderer(Renderer&&) noexcept        = default;
     Renderer& operator=(Renderer&&)      = default;
 
@@ -54,13 +55,23 @@ private:
         std::uint64_t                    lastUsedFrame = 0;
     };
 
+    struct LightBlock {
+        std::array<float, Scene::MAX_LIGHTS * 4> posType{};
+        std::array<float, Scene::MAX_LIGHTS * 4> colorRange{};
+        int                                      count = 0;
+        Vector3                                  cameraPos{0.0f, 0.0f, 0.0f};
+    };
+
     const MeshBuffers& uploadMeshIfNeeded(const std::shared_ptr<Mesh>& mesh);
     IInstanceBuffer&   uploadInstancesIfChanged(const InstancedEntity& entity);
+    void               packLights(std::span<const std::shared_ptr<Light>> lights, const Vector3& cameraPos);
+    void               applyLighting(IShader& shader) const;
 
     IRenderDevice*                               device = nullptr;
     std::shared_ptr<IShader>                     defaultShader;
     std::shared_ptr<IShader>                     instancedShader;
     Matrix4                                      currentViewProj = Matrix4::identity();
+    LightBlock                                   lightBlock;
     std::unordered_map<const Mesh*, MeshBuffers> meshCache;
 
     std::unordered_map<const InstancedEntity*, InstanceBuffers> instanceCache;

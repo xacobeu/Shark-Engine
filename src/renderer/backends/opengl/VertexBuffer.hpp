@@ -9,8 +9,8 @@ public:
     VertexBuffer(const void* data, size_t size);
     ~VertexBuffer() override = default;
 
-    VertexBuffer(const VertexBuffer&)            = delete;
-    VertexBuffer& operator=(const VertexBuffer&) = delete;
+    VertexBuffer(const VertexBuffer&)            = delete ("would double-delete the GL object; move it");
+    VertexBuffer& operator=(const VertexBuffer&) = delete ("would double-delete the GL object; move it");
 
     VertexBuffer(VertexBuffer&&) noexcept            = default;
     VertexBuffer& operator=(VertexBuffer&&) noexcept = default;

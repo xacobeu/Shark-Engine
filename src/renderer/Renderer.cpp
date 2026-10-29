@@ -1,6 +1,7 @@
 #include "renderer/Renderer.hpp"
 
 #include <algorithm>
+#include <utility>
 
 #include "renderer/geometry/Vertex.hpp"
 #include "util/Matrix4.hpp"
@@ -13,6 +14,8 @@ void Renderer::init(IRenderDevice* renderDevice) {
     if (!instancedShader) {
         instancedShader = device->createShader("res/shaders/instanced.vert.glsl", "res/shaders/instanced.frag.glsl");
     }
+
+    packLights({}, {0.0f, 0.0f, 0.0f});
 }
 
 void Renderer::begin(int width, int height) {
@@ -45,6 +48,8 @@ void Renderer::render(const Scene& scene, int width, int height) {
     Matrix4 viewProj   = projection * view;
     currentViewProj    = viewProj;
 
+    packLights(scene.getLights(), camera->getEyePosition());
+
     // Render standard individual entities (uninstanced)
     for (const auto& entity : scene.getEntities()) {
         if (!entity || !entity->getMesh()) {
@@ -56,7 +61,13 @@ void Renderer::render(const Scene& scene, int width, int height) {
         const Transform& transform = entity->getTransform();
         Matrix4          model     = Matrix4::trs(transform.position, transform.rotationDeg, transform.scale);
 
-        Matrix4 mvp = viewProj * model;
+        auto    safeInverse  = [](float s) { return (s != 0.0f) ? 1.0f / s : 0.0f; };
+        Vector3 inverseScale = {
+            safeInverse(transform.scale.x),
+            safeInverse(transform.scale.y),
+            safeInverse(transform.scale.z),
+        };
+        Matrix4 normalMatrix = Matrix4::trs({0.0f, 0.0f, 0.0f}, transform.rotationDeg, inverseScale);
 
         bool hasTexture = (entity->getTexture() != nullptr);
         if (hasTexture) {
@@ -68,7 +79,12 @@ void Renderer::render(const Scene& scene, int width, int height) {
         defaultShader->setInt("u_Texture", 0);
         Vector4 color = entity->getColor();
         defaultShader->setVec4("u_Color", color.x, color.y, color.z, color.w);
-        defaultShader->setMat4("u_Transform", mvp.data());
+        defaultShader->setFloat("u_Specular", entity->getSpecular());
+        defaultShader->setFloat("u_Shininess", entity->getShininess());
+        defaultShader->setMat4("u_Model", model.data());
+        defaultShader->setMat4("u_NormalMatrix", normalMatrix.data());
+        defaultShader->setMat4("u_ViewProjection", viewProj.data());
+        applyLighting(*defaultShader);
 
         buffers.vbo->bind();
         buffers.ebo->bind();
@@ -125,6 +141,9 @@ void Renderer::drawInstanced(
     instancedShader->setInt("u_HasTexture", hasTexture ? 1 : 0);
     instancedShader->setInt("u_Texture", 0);
     instancedShader->setMat4("u_ViewProjection", currentViewProj.data());
+    instancedShader->setFloat("u_Specular", Entity::DEFAULT_SPECULAR);
+    instancedShader->setFloat("u_Shininess", Entity::DEFAULT_SHININESS);
+    applyLighting(*instancedShader);
 
     buffers.vbo->bind();
     buffers.ebo->bind();
@@ -136,6 +155,48 @@ void Renderer::drawInstanced(
     if (hasTexture) {
         texture->unbind();
     }
+}
+
+void Renderer::packLights(std::span<const std::shared_ptr<Light>> lights, const Vector3& cameraPos) {
+    lightBlock           = {};
+    lightBlock.cameraPos = cameraPos;
+
+    auto push = [this](Vector3 posOrDir, LightType type, Vector4 color, float intensity, float range) {
+        const auto base                 = static_cast<std::size_t>(lightBlock.count) * 4;
+        lightBlock.posType[base + 0]    = posOrDir.x;
+        lightBlock.posType[base + 1]    = posOrDir.y;
+        lightBlock.posType[base + 2]    = posOrDir.z;
+        lightBlock.posType[base + 3]    = static_cast<float>(type);
+        lightBlock.colorRange[base + 0] = color.x * intensity;
+        lightBlock.colorRange[base + 1] = color.y * intensity;
+        lightBlock.colorRange[base + 2] = color.z * intensity;
+        lightBlock.colorRange[base + 3] = range;
+        ++lightBlock.count;
+    };
+
+    if (lights.empty()) {
+        const Vector4 white{1.0f, 1.0f, 1.0f, 1.0f};
+        push({0.0f, 0.0f, 0.0f}, LightType::Ambient, white, 0.3f, 0.0f);
+        push(normalize(Vector3{-1.0f, -1.0f, -1.0f}), LightType::Directional, white, 1.0f, 0.0f);
+        return;
+    }
+
+    for (const auto& light : lights) {
+        if (!light || std::cmp_greater_equal(lightBlock.count, Scene::MAX_LIGHTS)) {
+            continue;
+        }
+        const Vector3 posOrDir = (light->getType() == LightType::Directional) ? light->getDirection()
+                                                                              : light->getPosition();
+        push(posOrDir, light->getType(), light->getColor(), light->getIntensity(), light->getRange());
+    }
+}
+
+void Renderer::applyLighting(IShader& shader) const {
+    shader.setInt("u_LightCount", lightBlock.count);
+    const auto count = static_cast<std::size_t>(lightBlock.count);
+    shader.setVec4Array("u_LightPosType[0]", lightBlock.posType.data(), count);
+    shader.setVec4Array("u_LightColorRange[0]", lightBlock.colorRange.data(), count);
+    shader.setVec3("u_CameraPos", lightBlock.cameraPos.x, lightBlock.cameraPos.y, lightBlock.cameraPos.z);
 }
 
 const Renderer::MeshBuffers& Renderer::uploadMeshIfNeeded(const std::shared_ptr<Mesh>& mesh) {
@@ -151,8 +212,7 @@ const Renderer::MeshBuffers& Renderer::uploadMeshIfNeeded(const std::shared_ptr<
     buffers.vbo = device->createVertexBuffer(meshData.vertices.data(), meshData.vertices.size() * sizeof(Vertex));
     buffers.ebo = device->createIndexBuffer(meshData.triangles.data(), meshData.triangles.size());
 
-    auto [insertedIt, inserted] = meshCache.emplace(key, std::move(buffers));
-    (void)inserted;
+    auto [insertedIt, _] = meshCache.emplace(key, std::move(buffers));
     return insertedIt->second;
 }
 

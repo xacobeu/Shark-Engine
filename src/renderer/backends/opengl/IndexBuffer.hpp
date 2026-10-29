@@ -9,8 +9,8 @@ public:
     IndexBuffer(const unsigned int* data, size_t count);
     ~IndexBuffer() override = default;
 
-    IndexBuffer(const IndexBuffer&)            = delete;
-    IndexBuffer& operator=(const IndexBuffer&) = delete;
+    IndexBuffer(const IndexBuffer&)            = delete ("would double-delete the GL object; move it");
+    IndexBuffer& operator=(const IndexBuffer&) = delete ("would double-delete the GL object; move it");
 
     IndexBuffer(IndexBuffer&&) noexcept            = default;
     IndexBuffer& operator=(IndexBuffer&&) noexcept = default;

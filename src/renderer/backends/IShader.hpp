@@ -6,8 +6,8 @@ class IShader {
 public:
     virtual ~IShader() = default;
 
-    IShader(const IShader&)            = delete;
-    IShader& operator=(const IShader&) = delete;
+    IShader(const IShader&)            = delete ("GPU resources are shared via std::shared_ptr");
+    IShader& operator=(const IShader&) = delete ("GPU resources are shared via std::shared_ptr");
 
     IShader(IShader&&)            = default;
     IShader& operator=(IShader&&) = default;

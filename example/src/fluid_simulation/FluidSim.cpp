@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numbers>
 #include <random>
+#include <ranges>
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
@@ -238,7 +239,7 @@ void FluidSim::onUpdate(float deltaTime) {
 
         // Iteratively project collisions (PBD relaxation)
         constexpr int solverIterations = 3;
-        for (int iter = 0; iter < solverIterations; ++iter) {
+        for (auto _ : std::views::iota(0, solverIterations)) {
             grid.solveCollisions(particles, PARTICLE_RADIUS * 2.0f, relaxation);
             shark::exec::for_each(shark::exec::par_unseq, particles, [](Particle& p) {
                 p.clampToBounds(BOUNDS, PARTICLE_RADIUS);

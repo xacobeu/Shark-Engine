@@ -12,10 +12,10 @@ class Node {
 public:
     virtual ~Node() = default;
 
-    Node(const Node&)            = delete;
-    Node& operator=(const Node&) = delete;
-    Node(Node&&)                 = delete;
-    Node& operator=(Node&&)      = delete;
+    Node(const Node&)            = delete ("nodes are shared via std::shared_ptr");
+    Node& operator=(const Node&) = delete ("nodes are shared via std::shared_ptr");
+    Node(Node&&)                 = delete ("Scene caches raw node pointers");
+    Node& operator=(Node&&)      = delete ("Scene caches raw node pointers");
 
     // Transform setters.
     auto* setPosition(this auto& self, Vector3 pos) {

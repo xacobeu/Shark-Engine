@@ -660,6 +660,11 @@ template <std::size_t N, typename T> [[nodiscard]] Vec<N, T> normalize(const Vec
     }
 }
 
+template <std::size_t N, typename T>
+[[nodiscard]] constexpr Vec<N, T> lerp(const Vec<N, T>& a, const Vec<N, T>& b, T t) noexcept {
+    return a + ((b - a) * t);
+}
+
 template <typename T> [[nodiscard]] constexpr Vec<3, T> cross(const Vec<3, T>& a, const Vec<3, T>& b) noexcept {
     return {(a[1] * b[2]) - (a[2] * b[1]), (a[2] * b[0]) - (a[0] * b[2]), (a[0] * b[1]) - (a[1] * b[0])};
 }

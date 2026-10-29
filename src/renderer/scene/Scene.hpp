@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 #include "Node.hpp"
@@ -11,10 +13,18 @@
 
 class Scene {
 public:
+    static constexpr std::size_t MAX_LIGHTS = 8;
+
     template <typename T> T* add(std::shared_ptr<T> element) {
         static_assert(std::is_base_of_v<Node, T>, "T must derive from Node");
         if (!element) {
             return nullptr;
+        }
+
+        if constexpr (std::is_base_of_v<Light, T>) {
+            if (lights.size() >= MAX_LIGHTS) {
+                throw std::runtime_error("Scene exceeds Scene::MAX_LIGHTS lights.");
+            }
         }
 
         T* ptr = element.get();
@@ -58,6 +68,7 @@ public:
         return instancedEntities;
     }
     [[nodiscard]] const std::vector<std::shared_ptr<Light>>& getLights() const { return lights; }
+    [[nodiscard]] std::size_t getRemainingLightSlots() const { return MAX_LIGHTS - lights.size(); }
 
 private:
     std::vector<std::shared_ptr<Node>>            nodes;

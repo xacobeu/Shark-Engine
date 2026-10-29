@@ -5,6 +5,7 @@
 #include <cmath>
 #include <functional>
 #include <random>
+#include <ranges>
 #include <utility>
 
 #include "imgui.h"
@@ -67,6 +68,7 @@ void MolecularDynamics::resetSimulation() {
     if (atomEntities.size() != numAtoms) {
         initEntities();
     }
+    previousPositions.clear();
 
     std::random_device                    rd;
     std::mt19937                          rng(rd());
@@ -327,28 +329,26 @@ void MolecularDynamics::integrate(float dt) {
     });
 }
 
+void MolecularDynamics::onFixedUpdate(float /*fixedDt*/) {
+    if (isPaused) {
+        return;
+    }
+
+    previousPositions = particles.positions;
+
+    constexpr float SUB_DT   = 0.004f;
+    const int       subSteps = (numAtoms > 300) ? 2 : 4;
+    for (auto _ : std::views::iota(0, subSteps)) {
+        integrate(SUB_DT);
+    }
+}
+
 void MolecularDynamics::onUpdate(float deltaTime) {
     if (isPaused) {
         return;
     }
 
     elapsedTime += deltaTime;
-
-    constexpr float SUB_DT      = 0.004f;
-    const int       maxSubSteps = (numAtoms > 300) ? 2 : 4;
-
-    timeAccumulator += std::min(deltaTime, 0.02f);
-
-    int subSteps = 0;
-    while (timeAccumulator >= SUB_DT && subSteps < maxSubSteps) {
-        integrate(SUB_DT);
-        timeAccumulator -= SUB_DT;
-        ++subSteps;
-    }
-
-    if (timeAccumulator > (SUB_DT * static_cast<float>(maxSubSteps))) {
-        timeAccumulator = 0.0f;
-    }
 
     const float totalKinetic = shark::exec::transform_reduce_index(
         shark::exec::par_unseq, numAtoms, 0.0f, std::plus<>{},
@@ -358,8 +358,12 @@ void MolecularDynamics::onUpdate(float deltaTime) {
     currentKineticEnergy = totalKinetic;
     currentTemperature   = (numAtoms > 0) ? (2.0f * totalKinetic) / (3.0f * static_cast<float>(numAtoms)) : 0.0f;
 
-    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this](size_t i) {
-        atomEntities[i]->setPosition(particles.positions[i]);
+    const bool  canInterpolate = previousPositions.size() == numAtoms;
+    const float alpha          = getApp()->getFixedAlpha();
+    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, canInterpolate, alpha](size_t i) {
+        atomEntities[i]->setPosition(
+            canInterpolate ? lerp(previousPositions[i], particles.positions[i], alpha) : particles.positions[i]
+        );
     });
 }
 

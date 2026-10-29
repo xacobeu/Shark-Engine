@@ -13,8 +13,8 @@ public:
     explicit Texture(const std::string& filepath);
     ~Texture() override = default;
 
-    Texture(const Texture&)            = delete;
-    Texture& operator=(const Texture&) = delete;
+    Texture(const Texture&)            = delete ("would double-delete the GL object; move it");
+    Texture& operator=(const Texture&) = delete ("would double-delete the GL object; move it");
 
     Texture(Texture&&) noexcept            = default;
     Texture& operator=(Texture&&) noexcept = default;

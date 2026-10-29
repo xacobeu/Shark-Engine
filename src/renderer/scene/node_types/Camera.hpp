@@ -31,6 +31,8 @@ public:
         return Matrix4::perspective({.fovDeg = fov, .aspect = aspect, .nearZ = near, .farZ = far});
     }
 
+    [[nodiscard]] virtual Vector3 getEyePosition() const { return getPosition(); }
+
     [[nodiscard]] virtual Matrix4 getViewMatrix() const {
         return Matrix4::lookAt(getPosition(), {.x = 0, .y = 0, .z = 0}, {.x = 0, .y = 1, .z = 0});
     }

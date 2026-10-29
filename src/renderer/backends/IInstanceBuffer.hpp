@@ -5,8 +5,8 @@ class IInstanceBuffer {
 public:
     virtual ~IInstanceBuffer() = default;
 
-    IInstanceBuffer(const IInstanceBuffer&)            = delete;
-    IInstanceBuffer& operator=(const IInstanceBuffer&) = delete;
+    IInstanceBuffer(const IInstanceBuffer&)            = delete ("GPU resources are shared via std::shared_ptr");
+    IInstanceBuffer& operator=(const IInstanceBuffer&) = delete ("GPU resources are shared via std::shared_ptr");
 
     IInstanceBuffer(IInstanceBuffer&&)            = default;
     IInstanceBuffer& operator=(IInstanceBuffer&&) = default;

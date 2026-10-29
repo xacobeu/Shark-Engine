@@ -4,8 +4,8 @@ class ITexture {
 public:
     virtual ~ITexture() = default;
 
-    ITexture(const ITexture&)            = delete;
-    ITexture& operator=(const ITexture&) = delete;
+    ITexture(const ITexture&)            = delete ("GPU resources are shared via std::shared_ptr");
+    ITexture& operator=(const ITexture&) = delete ("GPU resources are shared via std::shared_ptr");
 
     ITexture(ITexture&&)            = default;
     ITexture& operator=(ITexture&&) = default;

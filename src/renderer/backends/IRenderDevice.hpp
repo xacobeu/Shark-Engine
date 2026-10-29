@@ -17,8 +17,8 @@ class IRenderDevice {
 public:
     virtual ~IRenderDevice() = default;
 
-    IRenderDevice(const IRenderDevice&)            = delete;
-    IRenderDevice& operator=(const IRenderDevice&) = delete;
+    IRenderDevice(const IRenderDevice&)            = delete ("owns the graphics context; pass a pointer");
+    IRenderDevice& operator=(const IRenderDevice&) = delete ("owns the graphics context; pass a pointer");
     IRenderDevice(IRenderDevice&&)                 = default;
     IRenderDevice& operator=(IRenderDevice&&)      = default;
 

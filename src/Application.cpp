@@ -1,5 +1,8 @@
 #include "Application.hpp"
 
+#include <algorithm>
+#include <chrono>
+
 #include <GLFW/glfw3.h>
 
 #ifdef __EMSCRIPTEN__
@@ -49,6 +52,8 @@ void Application::runStep() {
         }
     }
 
+    runFixedSteps();
+
     for (auto& layer : layers) {
         layer->onUpdate(deltaTime);
     }
@@ -62,6 +67,37 @@ void Application::runStep() {
     Window::endImGuiFrame();
     window.swapBuffers();
     window.resetScroll();
+}
+
+void Application::runFixedSteps() {
+    const float step     = config.fixedTimestep;
+    const int   maxSteps = std::max(config.maxFixedSteps, 1);
+
+    fixedAccumulator += std::min(deltaTime, step * static_cast<float>(maxSteps));
+
+    const auto budgetStart = std::chrono::steady_clock::now();
+    const auto budget      = std::chrono::duration<float>(step);
+
+    int  steps      = 0;
+    bool fellBehind = false;
+    while (fixedAccumulator >= step) {
+        if (steps >= maxSteps || (steps > 0 && std::chrono::steady_clock::now() - budgetStart >= budget)) {
+            fellBehind = true;
+            break;
+        }
+
+        for (auto& layer : layers) {
+            layer->onFixedUpdate(step);
+        }
+        fixedAccumulator -= step;
+        ++steps;
+    }
+
+    if (fellBehind) {
+        fixedAccumulator = std::min(fixedAccumulator, step);
+    }
+
+    fixedAlpha = std::clamp(fixedAccumulator / step, 0.0f, 1.0f);
 }
 
 void Application::close() {

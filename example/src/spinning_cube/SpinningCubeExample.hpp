@@ -16,6 +16,7 @@ public:
 private:
     Scene        scene;
     Entity*      cube       = nullptr;
+    Light*       orbitLight = nullptr;
     OrbitCamera* camera     = nullptr;
     float        elapsed    = 0.0f;
     int          frameCount = 0;

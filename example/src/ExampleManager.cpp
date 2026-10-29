@@ -125,6 +125,12 @@ void ExampleManager::processHotkeys() {
     }
 }
 
+void ExampleManager::onFixedUpdate(float fixedDt) {
+    if (activeExample) {
+        activeExample->onFixedUpdate(fixedDt);
+    }
+}
+
 void ExampleManager::onUpdate(float deltaTime) {
     processHotkeys();
     applyPendingSwitch();

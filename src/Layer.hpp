@@ -8,14 +8,15 @@ class Layer {
 public:
     virtual ~Layer() = default;
 
-    Layer(const Layer&)            = delete;
-    Layer& operator=(const Layer&) = delete;
-    Layer(Layer&&)                 = delete;
-    Layer& operator=(Layer&&)      = delete;
+    Layer(const Layer&)            = delete ("layers are owned by Application");
+    Layer& operator=(const Layer&) = delete ("layers are owned by Application");
+    Layer(Layer&&)                 = delete ("Application hands out raw Layer pointers");
+    Layer& operator=(Layer&&)      = delete ("Application hands out raw Layer pointers");
 
     virtual void onAttach() {}
     virtual void onDetach() {}
 
+    virtual void onFixedUpdate(float) {}
     virtual void onUpdate(float) {}
     virtual void onRender(Renderer&) {}
     void         setApp(Application* application) noexcept { app = application; }

@@ -17,6 +17,7 @@ public:
 
     void onAttach() override;
     void onDetach() override;
+    void onFixedUpdate(float fixedDt) override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
 
@@ -80,6 +81,7 @@ private:
     size_t                                         numAtoms    = 100;
     int                                            uiAtomCount = 100;
     ParticleData                                   particles;
+    std::vector<Vector3>                           previousPositions;
     std::vector<int>                               cellHead;
     std::vector<int>                               nextAtom;
     std::array<std::vector<CellCoord>, NUM_COLORS> colorCells;
@@ -95,7 +97,6 @@ private:
     // Runtime Metrics & Timing
     float currentTemperature   = 0.0f;
     float currentKineticEnergy = 0.0f;
-    float timeAccumulator      = 0.0f;
     float elapsedTime          = 0.0f;
     bool  isPaused             = false;
 };

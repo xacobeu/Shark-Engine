@@ -62,8 +62,8 @@ public:
 private:
     GLuint id = 0;
 
-    Object(const Object&)            = delete;
-    Object& operator=(const Object&) = delete;
+    Object(const Object&)            = delete ("would double-delete the GL object; move it");
+    Object& operator=(const Object&) = delete ("would double-delete the GL object; move it");
 };
 
 struct VertexArrayOperations {

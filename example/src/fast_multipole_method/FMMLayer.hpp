@@ -16,6 +16,7 @@ public:
 
     void onAttach() override;
     void onDetach() override;
+    void onFixedUpdate(float fixedDt) override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
 
@@ -50,8 +51,8 @@ private:
     void                solve();
     [[nodiscard]] float measureColorMaxSpeed() const;
 
-    static constexpr std::size_t ERROR_UPDATE_INTERVAL_FRAMES = 20;
-    static constexpr std::size_t ERROR_SAMPLE_COUNT           = 100;
+    static constexpr std::size_t ERROR_UPDATE_INTERVAL_STEPS = 20;
+    static constexpr std::size_t ERROR_SAMPLE_COUNT          = 100;
 
     // Top of the colormap sits at this multiple of the RMS particle speed.
     static constexpr float COLOR_RMS_MULTIPLIER          = 1.6f;
@@ -61,12 +62,13 @@ private:
     InstancedEntity* particleGroup = nullptr;
 
     std::vector<fmm::Particle> particles;
+    std::vector<Vector3>       previousPositions;
 
     AdaptiveFMM         fmm;
     AdaptiveFMM::Config fmmConfig;
     float               lastFmmTimeMs    = 0.0f;
     float               observedErrorPct = 0.0f;
-    std::size_t         frameCount       = 0;
+    std::size_t         stepCount        = 0;
     float               colorMaxSpeed    = 1.0f;
 
     Distribution distribution         = Distribution::Disc;

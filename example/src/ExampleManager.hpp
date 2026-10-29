@@ -19,13 +19,14 @@ public:
     ExampleManager();
     ~ExampleManager() override;
 
-    ExampleManager(const ExampleManager&)            = delete;
-    ExampleManager& operator=(const ExampleManager&) = delete;
-    ExampleManager(ExampleManager&&)                 = delete;
-    ExampleManager& operator=(ExampleManager&&)      = delete;
+    ExampleManager(const ExampleManager&)            = delete ("layers are owned by Application");
+    ExampleManager& operator=(const ExampleManager&) = delete ("layers are owned by Application");
+    ExampleManager(ExampleManager&&)                 = delete ("Application hands out raw Layer pointers");
+    ExampleManager& operator=(ExampleManager&&)      = delete ("Application hands out raw Layer pointers");
 
     void onAttach() override;
     void onDetach() override;
+    void onFixedUpdate(float fixedDt) override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
 
