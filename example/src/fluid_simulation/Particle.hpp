@@ -16,9 +16,7 @@ struct Particle {
 
     void clampToBounds(Vector3 bounds, float radius) {
         const Vector3 half = (bounds * 0.5f) - Vector3{radius, radius, radius};
-        position.x         = std::clamp(position.x, -half.x, half.x);
-        position.y         = std::clamp(position.y, -half.y, half.y);
-        position.z         = std::clamp(position.z, -half.z, half.z);
+        position           = clamp(position, -half, half);
     }
 
     void
@@ -72,24 +70,27 @@ struct Particle {
 };
 
 inline void resolvePairPBD(Particle& a, Particle& b, float minDistance, float minDistSq, float relaxation) {
-    Vector3 delta  = a.position - b.position;
-    float   distSq = (delta.x * delta.x) + (delta.y * delta.y) + (delta.z * delta.z);
+    const Vector3 delta  = a.position - b.position;
+    const float   distSq = delta.lengthSq();
     if (distSq >= minDistSq || distSq < 1e-12f) {
         return;
     }
 
-    float invDist     = 1.0f / std::sqrt(distSq);
-    float dist        = distSq * invDist;
-    float penetration = minDistance - dist;
+    const float invDist     = 1.0f / std::sqrt(distSq);
+    const float dist        = distSq * invDist;
+    const float penetration = minDistance - dist;
 
-    float   scale      = std::min(penetration * 0.5f * relaxation, minDistance * 0.10f) * invDist;
-    Vector3 correction = delta * scale;
-    a.position         = a.position + correction;
-    b.position         = b.position - correction;
+    const float   scale      = std::min(penetration * 0.5f * relaxation, minDistance * 0.10f) * invDist;
+    const Vector3 correction = delta * scale;
+    a.position += correction;
+    b.position -= correction;
 }
 
 class SpatialHashGrid {
 public:
+    // 3x3x2 coloring: same-colored cells never share a forward neighbor, so a color can run in parallel
+    static constexpr std::size_t NUM_COLORS = 18;
+
     void init(Vector3 bounds, float cellSize) {
         this->bounds      = bounds;
         this->cellSize    = cellSize;
@@ -106,7 +107,9 @@ public:
         const auto totalCells = static_cast<std::size_t>(nCellsX * nCellsY * nCellsZ);
         cellStart.resize(totalCells + 1, 0);
         cellCount.resize(totalCells, 0);
-        activeCells.reserve(totalCells / 4);
+        for (auto& bucket : colorCells) {
+            bucket.reserve(totalCells / (NUM_COLORS * 2));
+        }
 
         // Precompute 1D flat offsets for the 13 forward half-space neighbors
         static constexpr std::array<std::array<int, 3>, 13> OFFSETS_3D = {
@@ -138,8 +141,10 @@ public:
         }
 
         const auto totalCells = static_cast<std::size_t>(nCellsX * nCellsY * nCellsZ);
-        std::ranges::fill(cellCount, 0);
-        activeCells.clear();
+        shark::exec::fill(shark::exec::par_unseq, cellCount, 0);
+        for (auto& bucket : colorCells) {
+            bucket.clear();
+        }
 
         particleCell.resize(N);
         sortedParticles.resize(N);
@@ -148,7 +153,7 @@ public:
         const float halfY = bounds.y * 0.5f;
         const float halfZ = bounds.z * 0.5f;
 
-        // 1. Compute cell index for each particle (clamped inside the [1 .. innerCells] padded region)
+        // Compute cell index for each particle (clamped inside the [1 .. innerCells] padded region)
         for (std::size_t i = 0; i < N; ++i) {
             int cx = std::clamp(static_cast<int>((particles[i].position.x + halfX) * invCellSize) + 1, 1, innerCellsX);
             int cy = std::clamp(static_cast<int>((particles[i].position.y + halfY) * invCellSize) + 1, 1, innerCellsY);
@@ -158,11 +163,12 @@ public:
             particleCell[i] = cIdx;
 
             if (cellCount[static_cast<std::size_t>(cIdx)]++ == 0) {
-                activeCells.push_back(cIdx);
+                const auto color = static_cast<std::size_t>((cx % 3) + (3 * (cy % 3)) + (9 * (cz & 1)));
+                colorCells[color].push_back(cIdx);
             }
         }
 
-        // 2. Exclusive prefix sum to find cell start indices
+        // Exclusive prefix sum to find cell start indices
         int sum = 0;
         for (std::size_t c = 0; c < totalCells; ++c) {
             cellStart[c] = sum;
@@ -170,8 +176,7 @@ public:
         }
         cellStart[totalCells] = sum;
 
-        // 3. Scatter particles into contiguous sorted order
-        // Copy cellStart into cellWriteCursor to place particles
+        // Scatter particles into contiguous sorted order
         cellWriteCursor.assign(cellStart.begin(), cellStart.end() - 1);
         for (std::size_t i = 0; i < N; ++i) {
             int cIdx                                          = particleCell[i];
@@ -187,35 +192,37 @@ public:
         const float minDistSq      = minDistance * minDistance;
         Particle* __restrict pData = particles.data();
 
-        // Only iterate over cells that actually contain particles!
-        for (int cIdx : activeCells) {
-            const int startA = cellStart[static_cast<std::size_t>(cIdx)];
-            const int endA   = startA + cellCount[static_cast<std::size_t>(cIdx)];
+        // Process each conflict-free spatial color in parallel
+        for (const auto& bucket : colorCells) {
+            shark::exec::for_each(shark::exec::par, bucket, [&](int cIdx) {
+                const int startA = cellStart[static_cast<std::size_t>(cIdx)];
+                const int endA   = startA + cellCount[static_cast<std::size_t>(cIdx)];
 
-            // 1. Same cell pairs (contiguous in memory!)
-            for (int a = startA; a < endA; ++a) {
-                for (int b = a + 1; b < endA; ++b) {
-                    resolvePairPBD(pData[a], pData[b], minDistance, minDistSq, relaxation);
-                }
-            }
-
-            // 2. Neighbor cells (no bounds check needed thanks to 1-cell padding)
-            for (int offset : neighborOffsets) {
-                const int nIdx   = cIdx + offset;
-                const int countB = cellCount[static_cast<std::size_t>(nIdx)];
-                if (countB == 0) {
-                    continue;
-                }
-
-                const int startB = cellStart[static_cast<std::size_t>(nIdx)];
-                const int endB   = startB + countB;
-
+                // Same cell pairs (contiguous in memory)
                 for (int a = startA; a < endA; ++a) {
-                    for (int b = startB; b < endB; ++b) {
+                    for (int b = a + 1; b < endA; ++b) {
                         resolvePairPBD(pData[a], pData[b], minDistance, minDistSq, relaxation);
                     }
                 }
-            }
+
+                // Neighbor cells (no bounds check needed thanks to 1-cell padding)
+                for (int offset : neighborOffsets) {
+                    const int nIdx   = cIdx + offset;
+                    const int countB = cellCount[static_cast<std::size_t>(nIdx)];
+                    if (countB == 0) {
+                        continue;
+                    }
+
+                    const int startB = cellStart[static_cast<std::size_t>(nIdx)];
+                    const int endB   = startB + countB;
+
+                    for (int a = startA; a < endA; ++a) {
+                        for (int b = startB; b < endB; ++b) {
+                            resolvePairPBD(pData[a], pData[b], minDistance, minDistSq, relaxation);
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -229,44 +236,46 @@ public:
         Particle* __restrict pData = particles.data();
 
         auto interact = [&](Particle& a, Particle& b) {
-            Vector3 delta  = a.position - b.position;
-            float   distSq = (delta.x * delta.x) + (delta.y * delta.y) + (delta.z * delta.z);
+            const Vector3 delta  = a.position - b.position;
+            const float   distSq = delta.lengthSq();
             if (distSq >= hSq || distSq < 1e-12f) {
                 return;
             }
-            float   dist = std::sqrt(distSq);
-            float   q    = 1.0f - (dist * invH);
-            Vector3 dv   = (b.velocity - a.velocity) * (viscosityCoeff * q);
-            a.velocity   = a.velocity + dv;
-            b.velocity   = b.velocity - dv;
+            const float   dist = std::sqrt(distSq);
+            const float   q    = 1.0f - (dist * invH);
+            const Vector3 dv   = (b.velocity - a.velocity) * (viscosityCoeff * q);
+            a.velocity += dv;
+            b.velocity -= dv;
         };
 
-        for (int cIdx : activeCells) {
-            const int startA = cellStart[static_cast<std::size_t>(cIdx)];
-            const int endA   = startA + cellCount[static_cast<std::size_t>(cIdx)];
-
-            for (int a = startA; a < endA; ++a) {
-                for (int b = a + 1; b < endA; ++b) {
-                    interact(pData[a], pData[b]);
-                }
-            }
-
-            for (int offset : neighborOffsets) {
-                const int nIdx   = cIdx + offset;
-                const int countB = cellCount[static_cast<std::size_t>(nIdx)];
-                if (countB == 0) {
-                    continue;
-                }
-
-                const int startB = cellStart[static_cast<std::size_t>(nIdx)];
-                const int endB   = startB + countB;
+        for (const auto& bucket : colorCells) {
+            shark::exec::for_each(shark::exec::par, bucket, [&](int cIdx) {
+                const int startA = cellStart[static_cast<std::size_t>(cIdx)];
+                const int endA   = startA + cellCount[static_cast<std::size_t>(cIdx)];
 
                 for (int a = startA; a < endA; ++a) {
-                    for (int b = startB; b < endB; ++b) {
+                    for (int b = a + 1; b < endA; ++b) {
                         interact(pData[a], pData[b]);
                     }
                 }
-            }
+
+                for (int offset : neighborOffsets) {
+                    const int nIdx   = cIdx + offset;
+                    const int countB = cellCount[static_cast<std::size_t>(nIdx)];
+                    if (countB == 0) {
+                        continue;
+                    }
+
+                    const int startB = cellStart[static_cast<std::size_t>(nIdx)];
+                    const int endB   = startB + countB;
+
+                    for (int a = startA; a < endA; ++a) {
+                        for (int b = startB; b < endB; ++b) {
+                            interact(pData[a], pData[b]);
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -277,11 +286,11 @@ private:
     int     innerCellsX = 1, innerCellsY = 1, innerCellsZ = 1;
     int     nCellsX = 3, nCellsY = 3, nCellsZ = 3;
 
-    std::array<int, 13>   neighborOffsets{};
-    std::vector<int>      cellStart;
-    std::vector<int>      cellCount;
-    std::vector<int>      cellWriteCursor;
-    std::vector<int>      activeCells;
-    std::vector<int>      particleCell;
-    std::vector<Particle> sortedParticles;
+    std::array<int, 13>                      neighborOffsets{};
+    std::vector<int>                         cellStart;
+    std::vector<int>                         cellCount;
+    std::vector<int>                         cellWriteCursor;
+    std::array<std::vector<int>, NUM_COLORS> colorCells;
+    std::vector<int>                         particleCell;
+    std::vector<Particle>                    sortedParticles;
 };

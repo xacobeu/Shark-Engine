@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -23,7 +24,8 @@ public:
     [[nodiscard]] size_t getAtomCount() const { return numAtoms; }
 
 private:
-    static constexpr float SUB_DT = 0.002f;
+    static constexpr float       SUB_DT     = 0.002f;
+    static constexpr std::size_t NUM_COLORS = 18;
 
     struct ParticleData {
         std::vector<Vector3> positions;
@@ -55,12 +57,13 @@ private:
         int z;
     };
 
-    void initEntities();
-    void resetSimulation();
-    void computeForces();
-    void applyPairForce(size_t i, size_t j, const PotentialParams& params);
-    void buildCellList(int nCells);
-    void interactSameCell(int i, const PotentialParams& params);
+    void                  initEntities();
+    void                  resetSimulation();
+    void                  computeForces();
+    [[nodiscard]] Vector3 pairForce(const Vector3& r, float r2, const PotentialParams& params) const;
+    void                  applyPairForce(size_t i, size_t j, const PotentialParams& params);
+    void                  buildCellList(int nCells);
+    void                  interactSameCell(int i, const PotentialParams& params);
     void interactNeighborCells(CellCoord cell, int nCells, int headAtom, const PotentialParams& params);
     void resolveCellInteractions(int nCells, const PotentialParams& params);
     void computeForcesDirect(const PotentialParams& params);
@@ -74,11 +77,12 @@ private:
     std::vector<Entity*>  atomEntities;
 
     // Simulation State
-    size_t           numAtoms    = 100;
-    int              uiAtomCount = 100;
-    ParticleData     particles;
-    std::vector<int> cellHead;
-    std::vector<int> nextAtom;
+    size_t                                         numAtoms    = 100;
+    int                                            uiAtomCount = 100;
+    ParticleData                                   particles;
+    std::vector<int>                               cellHead;
+    std::vector<int>                               nextAtom;
+    std::array<std::vector<CellCoord>, NUM_COLORS> colorCells;
 
     // Simulation Parameters
     float epsilon           = 1.0f;

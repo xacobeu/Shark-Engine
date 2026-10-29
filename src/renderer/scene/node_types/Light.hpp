@@ -8,45 +8,27 @@ enum class LightType : std::uint8_t { Ambient, Directional, Point };
 
 class Light : public Node {
 public:
-    // Overrides.
-    Light* setPosition(Vector3 pos) {
-        Node::setPosition(pos);
-        return this;
-    }
-    Light* setRotation(Vector3 rot) {
-        Node::setRotation(rot);
-        return this;
-    }
-    Light* setScale(Vector3 scl) {
-        Node::setScale(scl);
-        return this;
-    }
-    Light* setTransform(const Transform& trns) {
-        Node::setTransform(trns);
-        return this;
-    }
-
     // Light setters.
-    Light* setColor(Vector4 newColor) {
-        this->color = newColor;
-        return this;
+    auto* setColor(this auto& self, Vector4 newColor) {
+        self.color = newColor;
+        return &self;
     }
-    Light* setType(LightType newType) {
-        this->type = newType;
-        return this;
+    auto* setType(this auto& self, LightType newType) {
+        self.type = newType;
+        return &self;
     }
-    Light* setIntensity(float newIntensity) {
-        this->intensity = newIntensity;
-        return this;
+    auto* setIntensity(this auto& self, float newIntensity) {
+        self.intensity = newIntensity;
+        return &self;
     }
 
     // Light getters.
-    [[nodiscard]] Vector4   getColor() const { return color; }
-    [[nodiscard]] LightType getType() const { return type; }
-    [[nodiscard]] float     getIntensity() const { return intensity; }
+    [[nodiscard]] const Vector4& getColor() const { return color; }
+    [[nodiscard]] LightType      getType() const { return type; }
+    [[nodiscard]] float          getIntensity() const { return intensity; }
 
 private:
-    LightType type;
+    LightType type = LightType::Point;
     Vector4   color{.x = 1.0f, .y = 1.0f, .z = 1.0f, .w = 1.0f};
     float     intensity = 1.0f;
 };

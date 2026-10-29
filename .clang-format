@@ -39,6 +39,9 @@ AlignEscapedNewlines: Left
 AlignOperands: Align
 AlignTrailingComments: true
 
+# Binary Operators
+BreakBeforeBinaryOperators: NonAssignment
+
 # Constructor Initializers
 BreakConstructorInitializers: BeforeColon
 PackConstructorInitializers: NextLine
@@ -80,6 +83,9 @@ SpacesInAngles: Never
 SpacesInCStyleCastParentheses: false
 SpacesInContainerLiterals: true
 SpacesInSquareBrackets: false
+
+# Penalties
+PenaltyBreakAssignment: 100
 
 # Miscellaneous
 FixNamespaceComments: true

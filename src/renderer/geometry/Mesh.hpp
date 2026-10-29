@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "renderer/geometry/Vertex.hpp"
+#include "util/Matrix4.hpp"
 #include "util/Vector.hpp"
 
 class Mesh {
@@ -24,6 +25,7 @@ public:
     Mesh& rotateX(float angleDeg);
     Mesh& rotateY(float angleDeg);
     Mesh& rotateZ(float angleDeg);
+    Mesh& transform(const Matrix4& mat);
 
 private:
     MeshData data;

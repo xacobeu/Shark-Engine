@@ -12,22 +12,27 @@ class Node {
 public:
     virtual ~Node() = default;
 
+    Node(const Node&)            = delete;
+    Node& operator=(const Node&) = delete;
+    Node(Node&&)                 = delete;
+    Node& operator=(Node&&)      = delete;
+
     // Transform setters.
-    Node* setPosition(Vector3 pos) {
-        transform.position = pos;
-        return this;
+    auto* setPosition(this auto& self, Vector3 pos) {
+        self.transform.position = pos;
+        return &self;
     }
-    Node* setRotation(Vector3 rot) {
-        transform.rotationDeg = rot;
-        return this;
+    auto* setRotation(this auto& self, Vector3 rot) {
+        self.transform.rotationDeg = rot;
+        return &self;
     }
-    Node* setScale(Vector3 scl) {
-        transform.scale = scl;
-        return this;
+    auto* setScale(this auto& self, Vector3 scl) {
+        self.transform.scale = scl;
+        return &self;
     }
-    Node* setTransform(const Transform& trns) {
-        transform = trns;
-        return this;
+    auto* setTransform(this auto& self, const Transform& trns) {
+        self.transform = trns;
+        return &self;
     }
 
     // Transform getters.
@@ -37,5 +42,8 @@ public:
     [[nodiscard]] const Transform& getTransform() const { return transform; }
 
 protected:
+    Node() = default;
+
+private:
     Transform transform;
 };

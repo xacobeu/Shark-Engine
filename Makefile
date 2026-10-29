@@ -2,7 +2,6 @@
 
 TARGET := $(if $(filter web,$(MAKECMDGOALS)),web,desktop)
 
-# Auto-detect EMSDK location if not exported
 EMSDK ?= $(firstword $(wildcard $(HOME)/.emsdk /opt/emsdk))
 export EMSDK
 

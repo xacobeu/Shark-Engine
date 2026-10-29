@@ -1,14 +1,11 @@
 #include "SpinningCubeExample.hpp"
 
 #include <memory>
-#include <print>
 
 #include "Application.hpp"
 #include "renderer/geometry/MeshFactory.hpp"
 
 void SpinningCubeExample::onAttach() {
-    std::println("[DEBUG] SpinningCubeExample layer attached");
-
     getApp()->setScene(&scene);
 
     camera = scene.add<OrbitCamera>()->setDistance(6.0f);

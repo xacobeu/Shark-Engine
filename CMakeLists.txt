@@ -54,6 +54,16 @@ if(EMSCRIPTEN)
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/res@/res"
         "--shell-file" "${CMAKE_SOURCE_DIR}/res/web_template/index.html"
     )
+elseif(NOT WIN32)
+    find_package(TBB QUIET)
+    if(TBB_FOUND)
+        target_link_libraries(SharkEngine PUBLIC TBB::tbb)
+    else()
+        target_compile_definitions(SharkEngine PUBLIC
+            SHARK_NO_PARALLEL_EXECUTION
+            _PSTL_PAR_BACKEND_SERIAL
+        )
+    endif()
 endif()
 
 # Demo Example (only when building top-level)

@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <print>
 #include <random>
 #include <span>
 
@@ -99,11 +98,11 @@ void RayTracingExample::initSpheres() {
 }
 
 void RayTracingExample::onAttach() {
-    std::println("[DEBUG] GPU Raytracer layer attached");
     getApp()->setScene(nullptr);
 
-    raytraceShader =
-        getApp()->getDevice()->createShader("res/shaders/raytrace.vert.glsl", "res/shaders/raytrace.frag.glsl");
+    raytraceShader = getApp()->getDevice()->createShader(
+        "res/shaders/raytrace.vert.glsl", "res/shaders/raytrace.frag.glsl"
+    );
 
     std::array<Vertex, 6> quadVertices = {
         Vertex{
@@ -163,9 +162,9 @@ void RayTracingExample::onUpdate(float deltaTime) {
     }
 
     // Hero sphere dynamic movement
-    spheres[0].currentPos.x = spheres[0].basePos.x + std::sin(time * spheres[0].animSpeed) * 1.6f;
-    spheres[0].currentPos.y =
-        spheres[0].basePos.y + std::cos(time * spheres[0].animSpeed * 1.3f) * spheres[0].animHeight;
+    spheres[0].currentPos.x = spheres[0].basePos.x + (std::sin(time * spheres[0].animSpeed) * 1.6f);
+    spheres[0].currentPos.y = spheres[0].basePos.y
+                              + (std::cos(time * spheres[0].animSpeed * 1.3f) * spheres[0].animHeight);
     spheres[0].currentPos.z = spheres[0].basePos.z;
 
     // Remaining shiny spheres floating and bobbing animation
@@ -201,16 +200,17 @@ void RayTracingExample::onRender(Renderer&) {
 
     std::array<float, MAX_SPHERES * 4> posRadData{};
     std::array<float, MAX_SPHERES * 4> colShinyData{};
-    for (int i = 0; i < count; ++i) {
-        posRadData[(i * 4) + 0] = spheres[i].currentPos.x;
-        posRadData[(i * 4) + 1] = spheres[i].currentPos.y;
-        posRadData[(i * 4) + 2] = spheres[i].currentPos.z;
-        posRadData[(i * 4) + 3] = spheres[i].radius;
+    for (std::size_t i = 0; i < static_cast<std::size_t>(count); ++i) {
+        const std::size_t base = i * 4;
+        posRadData[base + 0]   = spheres[i].currentPos.x;
+        posRadData[base + 1]   = spheres[i].currentPos.y;
+        posRadData[base + 2]   = spheres[i].currentPos.z;
+        posRadData[base + 3]   = spheres[i].radius;
 
-        colShinyData[(i * 4) + 0] = spheres[i].color.x;
-        colShinyData[(i * 4) + 1] = spheres[i].color.y;
-        colShinyData[(i * 4) + 2] = spheres[i].color.z;
-        colShinyData[(i * 4) + 3] = spheres[i].shininess;
+        colShinyData[base + 0] = spheres[i].color.x;
+        colShinyData[base + 1] = spheres[i].color.y;
+        colShinyData[base + 2] = spheres[i].color.z;
+        colShinyData[base + 3] = spheres[i].shininess;
     }
 
     raytraceShader->setVec4Array("u_SpherePosRad[0]", posRadData.data(), static_cast<std::size_t>(count));

@@ -9,7 +9,7 @@ class FluidSim : public Layer {
 public:
     static constexpr float   PARTICLE_RADIUS = 0.05f;
     static constexpr float   GRAVITY         = 9.8f;
-    static constexpr Vector3 BOUNDS          = {5.0f, 5.0f, 5.0f};
+    static constexpr Vector3 BOUNDS          = {4.0f, 4.0f, 4.0f};
     static constexpr float   DAMPING         = 0.9f;
 
     enum class SpawnPreset : std::uint8_t {

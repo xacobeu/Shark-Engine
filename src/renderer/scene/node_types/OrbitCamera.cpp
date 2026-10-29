@@ -17,7 +17,7 @@ void OrbitCamera::update(Application* app, float) {
     if (!imguiWantsMouse && scrollY != 0.0) {
         distance -= static_cast<float>(scrollY) * 0.5f;
         distance = std::max(distance, 1.0f);
-        distance = std::min(distance, 100.0f);
+        distance = std::min(distance, 600.0f);
     }
 
     double mouseX = app->getCursorX();
@@ -63,14 +63,14 @@ void OrbitCamera::update(Application* app, float) {
             double dx = mouseX - lastPanX;
             double dy = mouseY - lastPanY;
 
-            float yawRad = transform.rotationDeg.y * std::numbers::pi_v<float> / 180.0f;
+            float yawRad = getRotation().y * std::numbers::pi_v<float> / 180.0f;
 
             Vector3 right = {.x = -std::sin(yawRad), .y = 0.0f, .z = std::cos(yawRad)};
             Vector3 up    = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
 
             float panSpeed = distance * 0.002f;
 
-            target = target - right * (static_cast<float>(dx) * panSpeed) + up * (static_cast<float>(dy) * panSpeed);
+            target += (up * (static_cast<float>(dy) * panSpeed)) - (right * (static_cast<float>(dx) * panSpeed));
 
             lastPanX = mouseX;
             lastPanY = mouseY;

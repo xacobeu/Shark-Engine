@@ -7,76 +7,45 @@
 
 class OrbitCamera : public Camera {
 public:
-    // Overrides.
-    OrbitCamera* setPosition(Vector3 pos) {
-        Node::setPosition(pos);
-        return this;
-    }
-    OrbitCamera* setRotation(Vector3 rot) {
-        Node::setRotation(rot);
-        return this;
-    }
-    OrbitCamera* setScale(Vector3 scl) {
-        Node::setScale(scl);
-        return this;
-    }
-    OrbitCamera* setTransform(const Transform& trns) {
-        Node::setTransform(trns);
-        return this;
-    }
-
-    OrbitCamera* setFov(float newFov) {
-        Camera::setFov(newFov);
-        return this;
-    }
-    OrbitCamera* setNear(float newNear) {
-        Camera::setNear(newNear);
-        return this;
-    }
-    OrbitCamera* setFar(float newFar) {
-        Camera::setFar(newFar);
-        return this;
-    }
-
     // Orbit setters.
-    OrbitCamera* setTarget(Vector3 newTarget) {
-        this->target = newTarget;
-        return this;
+    auto* setTarget(this auto& self, Vector3 newTarget) {
+        self.target = newTarget;
+        return &self;
     }
-    OrbitCamera* setDistance(float newDistance) {
-        this->distance = newDistance;
-        return this;
+    auto* setDistance(this auto& self, float newDistance) {
+        self.distance = newDistance;
+        return &self;
     }
 
-    OrbitCamera* setRotateButton(int button) {
-        this->rotateButton = button;
-        return this;
+    auto* setRotateButton(this auto& self, int button) {
+        self.rotateButton = button;
+        return &self;
     }
-    OrbitCamera* setPanButton(int button) {
-        this->panButton = button;
-        return this;
+    auto* setPanButton(this auto& self, int button) {
+        self.panButton = button;
+        return &self;
     }
-    OrbitCamera* setRotationEnabled(bool enabled) {
-        this->rotationEnabled = enabled;
-        return this;
+    auto* setRotationEnabled(this auto& self, bool enabled) {
+        self.rotationEnabled = enabled;
+        return &self;
     }
-    OrbitCamera* setPanEnabled(bool enabled) {
-        this->panEnabled = enabled;
-        return this;
+    auto* setPanEnabled(this auto& self, bool enabled) {
+        self.panEnabled = enabled;
+        return &self;
     }
 
     // Orbit getters.
-    [[nodiscard]] Vector3 getTarget() const { return target; }
-    [[nodiscard]] float   getDistance() const { return distance; }
-    [[nodiscard]] int     getRotateButton() const { return rotateButton; }
-    [[nodiscard]] int     getPanButton() const { return panButton; }
-    [[nodiscard]] bool    isRotationEnabled() const { return rotationEnabled; }
-    [[nodiscard]] bool    isPanEnabled() const { return panEnabled; }
+    [[nodiscard]] const Vector3& getTarget() const { return target; }
+    [[nodiscard]] float          getDistance() const { return distance; }
+    [[nodiscard]] int            getRotateButton() const { return rotateButton; }
+    [[nodiscard]] int            getPanButton() const { return panButton; }
+    [[nodiscard]] bool           isRotationEnabled() const { return rotationEnabled; }
+    [[nodiscard]] bool           isPanEnabled() const { return panEnabled; }
 
     // Camera matrices.
     [[nodiscard]] Matrix4 getViewMatrix() const override {
-        float pitchRad = transform.rotationDeg.x * std::numbers::pi_v<float> / 180.0f;
-        float yawRad   = transform.rotationDeg.y * std::numbers::pi_v<float> / 180.0f;
+        float pitchRad = getRotation().x * std::numbers::pi_v<float> / 180.0f;
+        float yawRad   = getRotation().y * std::numbers::pi_v<float> / 180.0f;
 
         Vector3 pos = {
             .x = target.x + (distance * std::cos(pitchRad) * std::cos(yawRad)),

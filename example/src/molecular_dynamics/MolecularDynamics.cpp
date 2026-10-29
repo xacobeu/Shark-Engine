@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <print>
+#include <functional>
 #include <random>
 #include <utility>
 
@@ -11,6 +11,7 @@
 
 #include "Application.hpp"
 #include "renderer/geometry/MeshFactory.hpp"
+#include "util/Execution.hpp"
 
 MolecularDynamics::MolecularDynamics(size_t atomCount)
     : numAtoms(std::max<size_t>(1, atomCount)), uiAtomCount(static_cast<int>(numAtoms)) {}
@@ -44,8 +45,6 @@ void MolecularDynamics::initEntities() {
 }
 
 void MolecularDynamics::onAttach() {
-    std::println("[DEBUG] Molecular Dynamics layer attached with {} atoms", numAtoms);
-
     getApp()->setScene(&scene);
 
     sphereMesh = std::make_shared<Mesh>(MeshFactory::sphere(8, Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f}));
@@ -104,7 +103,7 @@ void MolecularDynamics::resetSimulation() {
                     .y = velDist(rng),
                     .z = velDist(rng),
                 };
-                avgVel = avgVel + vel;
+                avgVel += vel;
 
                 particles.positions.at(idx)  = pos;
                 particles.velocities.at(idx) = vel;
@@ -124,38 +123,40 @@ void MolecularDynamics::resetSimulation() {
     }
 
     if (numAtoms > 1) {
-        avgVel = avgVel / static_cast<float>(numAtoms);
+        avgVel /= static_cast<float>(numAtoms);
         for (size_t i = 0; i < numAtoms; ++i) {
-            particles.velocities.at(i) = particles.velocities.at(i) - avgVel;
+            particles.velocities.at(i) -= avgVel;
         }
     }
 
     computeForces();
 }
 
+Vector3 MolecularDynamics::pairForce(const Vector3& r, float r2, const PotentialParams& params) const {
+    const float invR2   = 1.0f / std::max(r2, params.minR2);
+    const float s6invR6 = params.s6 * invR2 * invR2 * invR2;
+    return r * (24.0f * epsilon * invR2 * s6invR6 * ((2.0f * s6invR6) - 1.0f));
+}
+
 void MolecularDynamics::applyPairForce(size_t i, size_t j, const PotentialParams& params) {
     Vector3 r  = particles.positions.at(i) - particles.positions.at(j);
-    float   r2 = r.dot(r);
+    float   r2 = r.lengthSq();
     if (r2 > params.rCut2) {
         return;
     }
 
-    float safeR2  = std::max(r2, params.minR2);
-    float invR2   = 1.0f / safeR2;
-    float invR6   = invR2 * invR2 * invR2;
-    float s6invR6 = params.s6 * invR6;
-
-    float fScalar = 24.0f * epsilon * invR2 * s6invR6 * ((2.0f * s6invR6) - 1.0f);
-
-    Vector3 f              = r * fScalar;
-    particles.forces.at(i) = particles.forces.at(i) + f;
-    particles.forces.at(j) = particles.forces.at(j) - f;
+    const Vector3 f = pairForce(r, r2, params);
+    particles.forces.at(i) += f;
+    particles.forces.at(j) -= f;
 }
 
 void MolecularDynamics::buildCellList(int nCells) {
     const int totalCells = nCells * nCells * nCells;
     cellHead.assign(static_cast<size_t>(totalCells), -1);
     nextAtom.resize(numAtoms, -1);
+    for (auto& bucket : colorCells) {
+        bucket.clear();
+    }
 
     const float invCellSize = static_cast<float>(nCells) / (2.0f * boxSize);
 
@@ -164,8 +165,14 @@ void MolecularDynamics::buildCellList(int nCells) {
         int cy = std::clamp(static_cast<int>((particles.positions.at(i).y + boxSize) * invCellSize), 0, nCells - 1);
         int cz = std::clamp(static_cast<int>((particles.positions.at(i).z + boxSize) * invCellSize), 0, nCells - 1);
 
-        int cIdx                               = cx + (nCells * (cy + (nCells * cz)));
-        nextAtom.at(i)                         = cellHead.at(static_cast<size_t>(cIdx));
+        int cIdx       = cx + (nCells * (cy + (nCells * cz)));
+        int prevHead   = cellHead.at(static_cast<size_t>(cIdx));
+        nextAtom.at(i) = prevHead;
+        if (prevHead == -1) {
+            // 3x3x2 coloring: same-colored cells never share a forward neighbor, so a color can run in parallel
+            const auto color = static_cast<std::size_t>((cx % 3) + (3 * (cy % 3)) + (9 * (cz & 1)));
+            colorCells[color].push_back({.x = cx, .y = cy, .z = cz});
+        }
         cellHead.at(static_cast<size_t>(cIdx)) = static_cast<int>(i);
     }
 }
@@ -221,33 +228,40 @@ void MolecularDynamics::interactNeighborCells(CellCoord cell, int nCells, int he
 }
 
 void MolecularDynamics::resolveCellInteractions(int nCells, const PotentialParams& params) {
-    for (int cz = 0; cz < nCells; ++cz) {
-        for (int cy = 0; cy < nCells; ++cy) {
-            for (int cx = 0; cx < nCells; ++cx) {
-                int cIdx = cx + (nCells * (cy + (nCells * cz)));
-                int i    = cellHead.at(static_cast<size_t>(cIdx));
-                if (i != -1) {
-                    interactSameCell(i, params);
-                    interactNeighborCells({.x = cx, .y = cy, .z = cz}, nCells, i, params);
-                }
+    for (const auto& bucket : colorCells) {
+        shark::exec::for_each(shark::exec::par, bucket, [this, nCells, &params](const CellCoord& cell) {
+            int cIdx = cell.x + (nCells * (cell.y + (nCells * cell.z)));
+            int i    = cellHead.at(static_cast<size_t>(cIdx));
+            if (i != -1) {
+                interactSameCell(i, params);
+                interactNeighborCells(cell, nCells, i, params);
             }
-        }
+        });
     }
 }
 
 void MolecularDynamics::computeForcesDirect(const PotentialParams& params) {
-    for (size_t i = 0; i < numAtoms; ++i) {
-        for (size_t j = i + 1; j < numAtoms; ++j) {
-            applyPairForce(i, j, params);
+    shark::exec::for_each_index(shark::exec::par, numAtoms, [this, &params](size_t i) {
+        Vector3       accForce{.x = 0.0f, .y = 0.0f, .z = 0.0f};
+        const Vector3 posI = particles.positions[i];
+
+        for (size_t j = 0; j < numAtoms; ++j) {
+            if (i == j) {
+                continue;
+            }
+            Vector3 r  = posI - particles.positions[j];
+            float   r2 = r.lengthSq();
+            if (r2 > params.rCut2) {
+                continue;
+            }
+            accForce += pairForce(r, r2, params);
         }
-    }
+
+        particles.forces[i] = accForce;
+    });
 }
 
 void MolecularDynamics::computeForces() {
-    for (size_t i = 0; i < numAtoms; ++i) {
-        particles.forces.at(i) = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
-    }
-
     const float rCut = 2.5f * sigma;
     const float s2   = sigma * sigma;
 
@@ -259,6 +273,7 @@ void MolecularDynamics::computeForces() {
 
     int nCells = static_cast<int>((2.0f * boxSize) / rCut);
     if (numAtoms >= 64 && nCells >= 3) {
+        shark::exec::fill(shark::exec::par_unseq, particles.forces, Vector3{.x = 0.0f, .y = 0.0f, .z = 0.0f});
         nCells = std::min(nCells, 12);
         buildCellList(nCells);
         resolveCellInteractions(nCells, params);
@@ -268,52 +283,48 @@ void MolecularDynamics::computeForces() {
 }
 
 void MolecularDynamics::integrate(float dt) {
-    const float halfDt = 0.5f * dt;
-    const float limit  = boxSize - atomRadius;
+    const float halfDt     = 0.5f * dt;
+    const float limit      = boxSize - atomRadius;
+    const float dampFactor = (damping > 0.0f) ? std::max(0.0f, 1.0f - (damping * dt)) : 1.0f;
 
-    // Step 1: Half-step velocity update & Full-step position drift
-    for (size_t i = 0; i < numAtoms; ++i) {
-        particles.velocities.at(i) = particles.velocities.at(i) + (particles.forces.at(i) * halfDt);
-
-        if (damping > 0.0f) {
-            particles.velocities.at(i) = particles.velocities.at(i) * std::max(0.0f, 1.0f - (damping * dt));
-        }
-
-        particles.positions.at(i) = particles.positions.at(i) + (particles.velocities.at(i) * dt);
+    // Velocity Verlet: half kick + drift
+    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, halfDt, dt, limit, dampFactor](size_t i) {
+        particles.velocities[i] += particles.forces[i] * halfDt;
+        particles.velocities[i] *= dampFactor;
+        particles.positions[i] += particles.velocities[i] * dt;
 
         // Reflective boundary checks
-        if (particles.positions.at(i).x > limit) {
-            particles.positions.at(i).x  = limit;
-            particles.velocities.at(i).x = -std::abs(particles.velocities.at(i).x);
-        } else if (particles.positions.at(i).x < -limit) {
-            particles.positions.at(i).x  = -limit;
-            particles.velocities.at(i).x = std::abs(particles.velocities.at(i).x);
+        if (particles.positions[i].x > limit) {
+            particles.positions[i].x  = limit;
+            particles.velocities[i].x = -std::abs(particles.velocities[i].x);
+        } else if (particles.positions[i].x < -limit) {
+            particles.positions[i].x  = -limit;
+            particles.velocities[i].x = std::abs(particles.velocities[i].x);
         }
 
-        if (particles.positions.at(i).y > limit) {
-            particles.positions.at(i).y  = limit;
-            particles.velocities.at(i).y = -std::abs(particles.velocities.at(i).y);
-        } else if (particles.positions.at(i).y < -limit) {
-            particles.positions.at(i).y  = -limit;
-            particles.velocities.at(i).y = std::abs(particles.velocities.at(i).y);
+        if (particles.positions[i].y > limit) {
+            particles.positions[i].y  = limit;
+            particles.velocities[i].y = -std::abs(particles.velocities[i].y);
+        } else if (particles.positions[i].y < -limit) {
+            particles.positions[i].y  = -limit;
+            particles.velocities[i].y = std::abs(particles.velocities[i].y);
         }
 
-        if (particles.positions.at(i).z > limit) {
-            particles.positions.at(i).z  = limit;
-            particles.velocities.at(i).z = -std::abs(particles.velocities.at(i).z);
-        } else if (particles.positions.at(i).z < -limit) {
-            particles.positions.at(i).z  = -limit;
-            particles.velocities.at(i).z = std::abs(particles.velocities.at(i).z);
+        if (particles.positions[i].z > limit) {
+            particles.positions[i].z  = limit;
+            particles.velocities[i].z = -std::abs(particles.velocities[i].z);
+        } else if (particles.positions[i].z < -limit) {
+            particles.positions[i].z  = -limit;
+            particles.velocities[i].z = std::abs(particles.velocities[i].z);
         }
-    }
+    });
 
-    // Step 2: Compute forces at updated positions
     computeForces();
 
-    // Step 3: Complete velocity step
-    for (size_t i = 0; i < numAtoms; ++i) {
-        particles.velocities.at(i) = particles.velocities.at(i) + (particles.forces.at(i) * halfDt);
-    }
+    // Second half kick with the new forces
+    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, halfDt](size_t i) {
+        particles.velocities[i] += particles.forces[i] * halfDt;
+    });
 }
 
 void MolecularDynamics::onUpdate(float deltaTime) {
@@ -339,17 +350,17 @@ void MolecularDynamics::onUpdate(float deltaTime) {
         timeAccumulator = 0.0f;
     }
 
-    float totalKinetic = 0.0f;
-    for (size_t i = 0; i < numAtoms; ++i) {
-        totalKinetic += 0.5f * particles.velocities.at(i).dot(particles.velocities.at(i));
-    }
+    const float totalKinetic = shark::exec::transform_reduce_index(
+        shark::exec::par_unseq, numAtoms, 0.0f, std::plus<>{},
+        [this](size_t i) { return 0.5f * particles.velocities[i].lengthSq(); }
+    );
 
     currentKineticEnergy = totalKinetic;
     currentTemperature   = (numAtoms > 0) ? (2.0f * totalKinetic) / (3.0f * static_cast<float>(numAtoms)) : 0.0f;
 
-    for (size_t i = 0; i < numAtoms; ++i) {
-        atomEntities.at(i)->setPosition(particles.positions.at(i));
-    }
+    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this](size_t i) {
+        atomEntities[i]->setPosition(particles.positions[i]);
+    });
 }
 
 void MolecularDynamics::renderImGui() {
@@ -368,9 +379,7 @@ void MolecularDynamics::renderImGui() {
     ImGui::SameLine();
     if (ImGui::Button("Rescale Velocities") && currentTemperature > 0.001f) {
         float factor = std::sqrt(targetTemperature / currentTemperature);
-        for (size_t i = 0; i < numAtoms; ++i) {
-            particles.velocities.at(i) = particles.velocities.at(i) * factor;
-        }
+        shark::exec::for_each(shark::exec::par_unseq, particles.velocities, [factor](Vector3& v) { v *= factor; });
     }
 
     ImGui::Separator();

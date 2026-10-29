@@ -5,7 +5,14 @@
 
 #include "Layer.hpp"
 
-enum class ExampleType : std::uint8_t { FluidSim = 0, MolecularDynamics, SpinningCube, RayTracing, Count };
+enum class ExampleType : std::uint8_t {
+    FluidSim = 0,
+    FastMultipoleMethod,
+    MolecularDynamics,
+    SpinningCube,
+    RayTracing,
+    Count
+};
 
 class ExampleManager : public Layer {
 public:
@@ -29,8 +36,8 @@ private:
     void                   applyPendingSwitch();
     std::unique_ptr<Layer> createExample(ExampleType type);
 
-    ExampleType currentType = ExampleType::FluidSim;
-    ExampleType pendingType = ExampleType::FluidSim;
+    ExampleType currentType = ExampleType::FastMultipoleMethod;
+    ExampleType pendingType = ExampleType::FastMultipoleMethod;
     bool        needsReload = false;
 
     std::unique_ptr<Layer> activeExample;

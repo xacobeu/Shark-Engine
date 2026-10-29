@@ -17,19 +17,25 @@ struct alignas(16) InstanceData {
 
 class InstancedEntity : public Node {
 public:
-    InstancedEntity* setMesh(std::shared_ptr<Mesh> newMesh) {
-        mesh = std::move(newMesh);
-        return this;
+    auto* setMesh(this auto& self, std::shared_ptr<Mesh> newMesh) {
+        self.mesh = std::move(newMesh);
+        return &self;
     }
 
-    InstancedEntity* setTexture(std::shared_ptr<ITexture> newTex) {
-        texture = std::move(newTex);
-        return this;
+    auto* setTexture(this auto& self, std::shared_ptr<ITexture> newTex) {
+        self.texture = std::move(newTex);
+        return &self;
     }
 
-    void setInstances(std::span<const InstanceData> data) { instances.assign(data.begin(), data.end()); }
+    auto* setInstances(this auto& self, std::span<const InstanceData> data) {
+        self.instances.assign(data.begin(), data.end());
+        return &self;
+    }
 
-    void setInstances(std::vector<InstanceData> data) { instances = std::move(data); }
+    auto* setInstances(this auto& self, std::vector<InstanceData> data) {
+        self.instances = std::move(data);
+        return &self;
+    }
 
     [[nodiscard]] std::vector<InstanceData>& getInstancesMutable() { return instances; }
 

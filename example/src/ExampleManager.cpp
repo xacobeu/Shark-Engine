@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 #include "Application.hpp"
+#include "fast_multipole_method/FMMLayer.hpp"
 #include "fluid_simulation/FluidSim.hpp"
 #include "molecular_dynamics/MolecularDynamics.hpp"
 #include "ray_tracing_shader/RayTracingExample.hpp"
@@ -21,6 +22,8 @@ std::string_view ExampleManager::getExampleName(ExampleType type) noexcept {
     switch (type) {
     case ExampleType::FluidSim:
         return "Fluid Simulation";
+    case ExampleType::FastMultipoleMethod:
+        return "Fast Multipole Method";
     case ExampleType::MolecularDynamics:
         return "Molecular Dynamics";
     case ExampleType::SpinningCube:
@@ -36,6 +39,8 @@ std::unique_ptr<Layer> ExampleManager::createExample(ExampleType type) {
     switch (type) {
     case ExampleType::FluidSim:
         return std::make_unique<FluidSim>();
+    case ExampleType::FastMultipoleMethod:
+        return std::make_unique<FMMLayer>();
     case ExampleType::MolecularDynamics:
         return std::make_unique<MolecularDynamics>();
     case ExampleType::SpinningCube:
@@ -108,10 +113,12 @@ void ExampleManager::processHotkeys() {
     if (ImGui::IsKeyPressed(ImGuiKey_1, false) || ImGui::IsKeyPressed(ImGuiKey_F1, false)) {
         switchExample(ExampleType::FluidSim);
     } else if (ImGui::IsKeyPressed(ImGuiKey_2, false) || ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
-        switchExample(ExampleType::MolecularDynamics);
+        switchExample(ExampleType::FastMultipoleMethod);
     } else if (ImGui::IsKeyPressed(ImGuiKey_3, false) || ImGui::IsKeyPressed(ImGuiKey_F3, false)) {
-        switchExample(ExampleType::SpinningCube);
+        switchExample(ExampleType::MolecularDynamics);
     } else if (ImGui::IsKeyPressed(ImGuiKey_4, false) || ImGui::IsKeyPressed(ImGuiKey_F4, false)) {
+        switchExample(ExampleType::SpinningCube);
+    } else if (ImGui::IsKeyPressed(ImGuiKey_5, false) || ImGui::IsKeyPressed(ImGuiKey_F5, false)) {
         switchExample(ExampleType::RayTracing);
     } else if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
         reloadCurrent();
@@ -162,6 +169,7 @@ void ExampleManager::renderTopBar() {
     };
 
     renderQuickButton(ExampleType::FluidSim, "Fluid");
+    renderQuickButton(ExampleType::FastMultipoleMethod, "FMM");
     renderQuickButton(ExampleType::MolecularDynamics, "Molecular");
     renderQuickButton(ExampleType::SpinningCube, "Cube");
     renderQuickButton(ExampleType::RayTracing, "Raytracer");

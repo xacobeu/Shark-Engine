@@ -11,8 +11,6 @@ static void emscriptenLoop(void* arg) {
 }
 #endif
 
-#include "renderer/backends/IRenderDevice.hpp"
-
 Application::Application(const Config& config) : config(config), window(config.width, config.height, config.title) {
     device = IRenderDevice::create(config.api);
     renderer.init(device.get());

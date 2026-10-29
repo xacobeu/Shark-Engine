@@ -27,15 +27,6 @@ inline Vector4 speedToColor(float speed, float maxSpeed = 8.0f) {
     float factor = (t - 0.5f) * 2.0f;
     return {0.10f + (0.90f * factor), 0.90f + (0.05f * factor), 0.95f - (0.45f * factor), 1.0f};
 }
-
-inline Vector3 rotateVectorInverse(const Matrix4& rot, const Vector3& w) {
-    // rot is orthogonal column-major rotation matrix, so rot^-1 = rot^T
-    return {
-        (rot.m[0] * w.x) + (rot.m[1] * w.y) + (rot.m[2] * w.z),
-        (rot.m[4] * w.x) + (rot.m[5] * w.y) + (rot.m[6] * w.z),
-        (rot.m[8] * w.x) + (rot.m[9] * w.y) + (rot.m[10] * w.z),
-    };
-}
 } // namespace
 
 void FluidSim::resetBox() {
@@ -131,8 +122,9 @@ void FluidSim::onAttach() {
     camera->setRotateButton(GLFW_MOUSE_BUTTON_RIGHT);
     camera->setPanEnabled(false);
 
-    auto sharedSphereMesh =
-        std::make_shared<Mesh>(MeshFactory::sphere(6, Vector3{.x = 0.0f, .y = 0.0f, .z = 0.0f}).scale(PARTICLE_RADIUS));
+    auto sharedSphereMesh = std::make_shared<Mesh>(
+        MeshFactory::sphere(6, Vector3{.x = 0.0f, .y = 0.0f, .z = 0.0f}).scale(PARTICLE_RADIUS)
+    );
 
     particleGroup = scene.add<InstancedEntity>()->setMesh(sharedSphereMesh);
 
@@ -162,7 +154,7 @@ void FluidSim::onUpdate(float deltaTime) {
         return;
     }
 
-    // 1. Process interactive mouse dragging of the box
+    // Process interactive mouse dragging of the box
     const bool imguiWantsMouse = (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
     double     mouseX          = getApp()->getCursorX();
     double     mouseY          = getApp()->getCursorY();
@@ -175,8 +167,8 @@ void FluidSim::onUpdate(float deltaTime) {
                 lastMouseY    = mouseY;
             }
         } else {
-            float dx = static_cast<float>(mouseX - lastMouseX);
-            float dy = static_cast<float>(mouseY - lastMouseY);
+            auto dx = static_cast<float>(mouseX - lastMouseX);
+            auto dy = static_cast<float>(mouseY - lastMouseY);
 
             float yawRad = (camera != nullptr) ? (camera->getRotation().y * std::numbers::pi_v<float> / 180.0f) : 0.0f;
 
@@ -186,12 +178,12 @@ void FluidSim::onUpdate(float deltaTime) {
             // dy tilts pitch around camera horizontal axis; dx yaws around vertical Y axis
             Vector3 deltaRot = (camRight * (dy * tiltSensitivity)) + Vector3{0.0f, dx * tiltSensitivity, 0.0f};
 
-            boxTargetRot = boxTargetRot + deltaRot;
+            boxTargetRot += deltaRot;
 
             constexpr float MAX_TILT = 60.0f;
-            boxTargetRot.x           = std::clamp(boxTargetRot.x, -MAX_TILT, MAX_TILT);
-            boxTargetRot.y           = std::clamp(boxTargetRot.y, -MAX_TILT, MAX_TILT);
-            boxTargetRot.z           = std::clamp(boxTargetRot.z, -MAX_TILT, MAX_TILT);
+            boxTargetRot             = clamp(
+                boxTargetRot, Vector3{-MAX_TILT, -MAX_TILT, -MAX_TILT}, Vector3{MAX_TILT, MAX_TILT, MAX_TILT}
+            );
 
             lastMouseX = mouseX;
             lastMouseY = mouseY;
@@ -201,101 +193,93 @@ void FluidSim::onUpdate(float deltaTime) {
         boxTargetRot  = {0.0f, 0.0f, 0.0f};
     }
 
-    // 2. Physics step for box tilt (spring-damper dynamics)
+    // Physics step for box tilt (spring-damper dynamics)
     constexpr float springStiffness = 45.0f;
     constexpr float springDamping   = 8.0f;
 
     Vector3 rotError     = boxTargetRot - boxRot;
     Vector3 rotSpringAcc = (rotError * springStiffness) - (boxAngVel * springDamping);
-    boxAngVel            = boxAngVel + (rotSpringAcc * dt);
-    boxRot               = boxRot + (boxAngVel * dt);
+    boxAngVel += rotSpringAcc * dt;
+    boxRot += boxAngVel * dt;
 
     const float invDt = 1.0f / dt;
     boxAngAcc         = (boxAngVel - prevBoxAngVel) * invDt;
 
     // Safety clamp on acceleration spikes from sudden mouse jumps
     constexpr float MAX_ANG_ACC = 400.0f;
-    if (boxAngAcc.length() > MAX_ANG_ACC) {
-        boxAngAcc = boxAngAcc * (MAX_ANG_ACC / boxAngAcc.length());
+    if (boxAngAcc.lengthSq() > (MAX_ANG_ACC * MAX_ANG_ACC)) {
+        boxAngAcc *= MAX_ANG_ACC / boxAngAcc.length();
     }
 
     prevBoxAngVel = boxAngVel;
 
     // Build rotation matrix (Z * Y * X)
-    Matrix4 rotMat = Matrix4::rotateZ(boxRot.z) * Matrix4::rotateY(boxRot.y) * Matrix4::rotateX(boxRot.x);
+    Matrix4 rotMat = Matrix4::trs({0.0f, 0.0f, 0.0f}, boxRot, {1.0f, 1.0f, 1.0f});
 
     // Compute effective accelerations in box-local frame
-    Vector3 localGravity = rotateVectorInverse(rotMat, Vector3{0.0f, -gravity, 0.0f});
+    Vector3 localGravity = rotMat.transformVectorTransposed(Vector3{0.0f, -gravity, 0.0f});
 
-    Vector3 radAngVel = rotateVectorInverse(rotMat, boxAngVel * (std::numbers::pi_v<float> / 180.0f));
-    Vector3 radAngAcc = rotateVectorInverse(rotMat, boxAngAcc * (std::numbers::pi_v<float> / 180.0f));
+    Vector3 radAngVel = rotMat.transformVectorTransposed(boxAngVel * (std::numbers::pi_v<float> / 180.0f));
+    Vector3 radAngAcc = rotMat.transformVectorTransposed(boxAngAcc * (std::numbers::pi_v<float> / 180.0f));
 
     if (!isPaused) {
-        // 3. Predict particle positions via forces
-        for (auto& p : particles) {
+        // Predict particle positions via forces
+        shark::exec::for_each(shark::exec::par_unseq, particles, [localGravity, radAngVel, radAngAcc, dt](Particle& p) {
             Vector3 r      = p.position; // local position relative to box center
-            Vector3 a_ang  = cross(radAngAcc, r) * (-1.0f);
-            Vector3 a_cent = cross(radAngVel, cross(radAngVel, r)) * (-1.0f);
+            Vector3 a_ang  = -cross(radAngAcc, r);
+            Vector3 a_cent = -cross(radAngVel, cross(radAngVel, r));
             Vector3 a_cor  = cross(radAngVel, p.velocity) * (-2.0f);
 
             Vector3 effAcc = localGravity + a_ang + a_cent + a_cor;
 
-            p.velocity     = p.velocity + (effAcc * dt);
+            p.velocity += effAcc * dt;
             p.prevPosition = p.position;
-            p.position     = p.position + (p.velocity * dt);
-        }
+            p.position += p.velocity * dt;
+        });
 
-        // 4. Build spatial grid with predicted positions
+        // Build spatial grid with predicted positions
         grid.build(particles);
 
-        // 5. Iteratively project collisions (PBD relaxation)
+        // Iteratively project collisions (PBD relaxation)
         constexpr int solverIterations = 3;
         for (int iter = 0; iter < solverIterations; ++iter) {
             grid.solveCollisions(particles, PARTICLE_RADIUS * 2.0f, relaxation);
-            for (auto& p : particles) {
+            shark::exec::for_each(shark::exec::par_unseq, particles, [](Particle& p) {
                 p.clampToBounds(BOUNDS, PARTICLE_RADIUS);
-            }
+            });
         }
 
         constexpr float MAX_SPEED    = 15.0f;
         constexpr float MAX_SPEED_SQ = MAX_SPEED * MAX_SPEED;
 
-        for (auto& p : particles) {
+        const float rest = restitution;
+        const float fric = friction;
+        shark::exec::for_each(shark::exec::par_unseq, particles, [invDt, dt, rest, fric](Particle& p) {
             p.velocity = (p.position - p.prevPosition) * invDt;
 
-            float speedSq =
-                (p.velocity.x * p.velocity.x) + (p.velocity.y * p.velocity.y) + (p.velocity.z * p.velocity.z);
+            float speedSq = p.velocity.lengthSq();
             if (speedSq > MAX_SPEED_SQ) {
                 float factor = MAX_SPEED / std::sqrt(speedSq);
-                p.velocity   = p.velocity * factor;
+                p.velocity *= factor;
             }
 
-            p.resolveBoundaryVelocity(BOUNDS, PARTICLE_RADIUS, dt, restitution, friction);
-        }
+            p.resolveBoundaryVelocity(BOUNDS, PARTICLE_RADIUS, dt, rest, fric);
+        });
 
-        // 6. Viscosity smoothing (XSPH)
+        // Viscosity smoothing (XSPH)
         grid.applyViscosity(particles, PARTICLE_RADIUS * 2.5f, viscosity);
     }
 
-    // 7. Update visual transforms
+    // Update visual transforms
     if (boxFrameEntity != nullptr) {
         boxFrameEntity->setPosition({0.0f, 0.0f, 0.0f})->setRotation(boxRot);
     }
 
-    Matrix4 boxMat = rotMat;
-    float   m0 = boxMat.m[0], m1 = boxMat.m[1], m2 = boxMat.m[2];
-    float   m4 = boxMat.m[4], m5 = boxMat.m[5], m6 = boxMat.m[6];
-    float   m8 = boxMat.m[8], m9 = boxMat.m[9], m10 = boxMat.m[10];
-
-    for (std::size_t i = 0; i < particles.size(); ++i) {
-        const auto& pos = particles[i].position;
-        Vector3     worldPos{
-            (m0 * pos.x) + (m4 * pos.y) + (m8 * pos.z), (m1 * pos.x) + (m5 * pos.y) + (m9 * pos.z),
-            (m2 * pos.x) + (m6 * pos.y) + (m10 * pos.z)
-        };
+    shark::exec::for_each_index(shark::exec::par_unseq, particles.size(), [this, &rotMat](std::size_t i) {
+        Vector3 worldPos            = rotMat.transformVector(particles[i].position);
         instanceData[i].modelMatrix = Matrix4::translate(worldPos);
         instanceData[i].color       = speedToColor(particles[i].velocity.length());
-    }
+    });
 
     if (particleGroup != nullptr) {
         particleGroup->setInstances(instanceData);

@@ -18,7 +18,7 @@ void Renderer::init(IRenderDevice* renderDevice) {
 void Renderer::begin(int width, int height) {
     if (device != nullptr) {
         device->setViewport(0, 0, width, height);
-        device->begin(0.05f, 0.2f, 0.35f, 1.0f);
+        device->begin(0.0f, 0.0f, 0.0f, 0.0f);
     }
 }
 
@@ -50,9 +50,7 @@ void Renderer::render(const Scene& scene, int width, int height) {
         const auto& buffers = uploadMeshIfNeeded(entity->getMesh());
 
         const Transform& transform = entity->getTransform();
-        Matrix4          model = Matrix4::translate(transform.position) * Matrix4::rotateZ(transform.rotationDeg.z) *
-                                 Matrix4::rotateY(transform.rotationDeg.y) * Matrix4::rotateX(transform.rotationDeg.x) *
-                                 Matrix4::scale(transform.scale);
+        Matrix4          model     = Matrix4::trs(transform.position, transform.rotationDeg, transform.scale);
 
         Matrix4 mvp = viewProj * model;
 

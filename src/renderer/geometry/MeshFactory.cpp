@@ -167,10 +167,11 @@ Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickn
         for (std::size_t f = 0; f < 6; ++f) {
             auto faceBase = static_cast<unsigned int>(mesh.vertices.size());
             for (std::size_t v = 0; v < 4; ++v) {
-                Vector3 p = center + Vector3{
-                                         faceOffsets[f][v].x * extents.x, faceOffsets[f][v].y * extents.y,
-                                         faceOffsets[f][v].z * extents.z
-                                     };
+                Vector3 p = center
+                            + Vector3{
+                                faceOffsets[f][v].x * extents.x, faceOffsets[f][v].y * extents.y,
+                                faceOffsets[f][v].z * extents.z
+                            };
                 mesh.vertices.push_back(
                     Vertex{.position = p, .normal = faceNormals[f], .uv = Vector2{0.0f, 0.0f}, .color = barColor}
                 );
@@ -201,9 +202,6 @@ Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickn
     addCuboid({halfX, -halfY, 0.0f}, {ht, ht, halfZ}, color);
     addCuboid({-halfX, halfY, 0.0f}, {ht, ht, halfZ}, color);
     addCuboid({halfX, halfY, 0.0f}, {ht, ht, halfZ}, color);
-
-    // Subtle bottom base grid / floor slab for depth
-    addCuboid({0.0f, -halfY - (ht * 0.5f), 0.0f}, {halfX, ht * 0.5f, halfZ}, color * 0.45f);
 
     return mesh;
 }

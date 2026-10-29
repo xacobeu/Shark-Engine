@@ -9,35 +9,17 @@
 
 class Entity : public Node {
 public:
-    // Overrides.
-    Entity* setPosition(Vector3 pos) {
-        Node::setPosition(pos);
-        return this;
+    auto* setMesh(this auto& self, std::shared_ptr<Mesh> newMesh) {
+        self.mesh = std::move(newMesh);
+        return &self;
     }
-    Entity* setRotation(Vector3 rot) {
-        Node::setRotation(rot);
-        return this;
+    auto* setTexture(this auto& self, std::shared_ptr<ITexture> newTex) {
+        self.texture = std::move(newTex);
+        return &self;
     }
-    Entity* setScale(Vector3 scl) {
-        Node::setScale(scl);
-        return this;
-    }
-    Entity* setTransform(const Transform& trns) {
-        Node::setTransform(trns);
-        return this;
-    }
-
-    Entity* setMesh(std::shared_ptr<Mesh> newMesh) {
-        this->mesh = std::move(newMesh);
-        return this;
-    }
-    Entity* setTexture(std::shared_ptr<ITexture> newTex) {
-        this->texture = std::move(newTex);
-        return this;
-    }
-    Entity* setColor(Vector4 newColor) {
-        this->color = newColor;
-        return this;
+    auto* setColor(this auto& self, Vector4 newColor) {
+        self.color = newColor;
+        return &self;
     }
 
     // Material getters.

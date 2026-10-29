@@ -12,7 +12,7 @@
 
 class RayTracingExample : public Layer {
 public:
-    static constexpr int MAX_SPHERES = 32;
+    static constexpr int MAX_SPHERES = 128;
 
     struct SphereInstance {
         Vector3 basePos;
