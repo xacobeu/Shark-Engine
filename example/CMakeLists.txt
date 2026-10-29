@@ -1,6 +1,9 @@
 file(GLOB_RECURSE EXAMPLE_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
+file(GLOB_RECURSE EXAMPLE_MODULES CONFIGURE_DEPENDS "src/*.cppm")
+list(FILTER EXAMPLE_SOURCES EXCLUDE REGEX "/Main\\.cpp$")
 
-add_executable(SharkEngineExample ${EXAMPLE_SOURCES})
+add_executable(SharkEngineExample src/Main.cpp)
+target_sources(SharkEngineExample PRIVATE FILE_SET CXX_MODULES BASE_DIRS src FILES ${EXAMPLE_MODULES} ${EXAMPLE_SOURCES})
 
 target_link_libraries(SharkEngineExample PRIVATE
     SharkEngine

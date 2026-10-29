@@ -1,16 +1,17 @@
-#include "FMMLayer.hpp"
-
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <functional>
-#include <numbers>
-#include <random>
-#include <span>
-#include <utility>
+module;
 
 #include "imgui.h"
+
+module examples:fast_multipole_method.FMMLayer.impl;
+
+import std;
+
+import :fast_multipole_method.FMMLayer;
+import :fast_multipole_method.Particle;
+
+import shark;
+
+using namespace shark;
 
 namespace {
 // matplotlib's "magma" colormap, sampled at 17 evenly spaced stops (t = i / 16).

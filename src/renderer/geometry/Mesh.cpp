@@ -1,6 +1,14 @@
-#include "renderer/geometry/Mesh.hpp"
+module shark:renderer.geometry.Mesh.impl;
 
-#include "util/Execution.hpp"
+import std;
+
+import :renderer.geometry.Mesh;
+import :renderer.geometry.Vertex;
+import :util.Execution;
+import :util.Matrix4;
+import :util.Vector;
+
+namespace shark {
 
 Mesh& Mesh::translate(const Vector3& t) {
     shark::exec::for_each(shark::exec::unseq, data.vertices, [&](Vertex& v) { v.position += t; });
@@ -55,3 +63,5 @@ Mesh& Mesh::transform(const Matrix4& mat) {
     });
     return *this;
 }
+
+} // namespace shark

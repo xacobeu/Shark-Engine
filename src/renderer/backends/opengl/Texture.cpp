@@ -1,13 +1,18 @@
-#include "renderer/backends/opengl/Texture.hpp"
-#define STB_IMAGE_IMPLEMENTATION
-#include <memory>
-#include <print>
+module;
+
+#include "GLHeader.hpp"
+
 #include <stb_image.h>
-#include <stdexcept>
 
-#include "util/ResourcePath.hpp"
+module shark:renderer.backends.opengl.Texture.impl;
 
-namespace GL {
+import std;
+
+import :util.ResourcePath;
+
+import :renderer.backends.opengl.Texture;
+
+namespace shark::GL {
 
 namespace {
 
@@ -69,7 +74,7 @@ Texture::Texture(const std::string& filepath) {
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
     } else {
-        std::println(stderr, "[ERROR] Failed to load texture at path: {}", filepath);
+        std::println(std::cerr, "[ERROR] Failed to load texture at path: {}", filepath);
         throw std::runtime_error("Failed to load texture: " + filepath);
     }
 }
@@ -83,4 +88,4 @@ void Texture::unbind() const {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-} // namespace GL
+} // namespace shark::GL

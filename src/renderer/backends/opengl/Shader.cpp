@@ -1,48 +1,19 @@
-#include "renderer/backends/opengl/Shader.hpp"
+module;
 
-#include <fstream>
-#include <iostream>
-#include <print>
-#include <sstream>
-#include <stdexcept>
-#include <vector>
+#include "GLHeader.hpp"
 
-#include "util/ResourcePath.hpp"
+module shark:renderer.backends.opengl.Shader.impl;
 
-namespace GL {
+import std;
 
-Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) : program(glCreateProgram()) {
-    std::string vertexSource   = loadTextFile(vertexPath);
-    std::string fragmentSource = loadTextFile(fragmentPath);
+import :util.ResourcePath;
 
-    GLuint vs = compile(GL_VERTEX_SHADER, vertexSource);
-    GLuint fs = compile(GL_FRAGMENT_SHADER, fragmentSource);
+import :renderer.backends.opengl.Shader;
 
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
+namespace shark::GL {
 
-    GLint linked = 0;
-    glGetProgramiv(program, GL_LINK_STATUS, &linked);
-    if (linked == 0) {
-        GLint logLength = 0;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
-        std::vector<char> log(static_cast<size_t>(logLength));
-        glGetProgramInfoLog(program, logLength, nullptr, log.data());
-        std::println(stderr, "[ERROR] Link failed: {}", log.data());
-
-        glDeleteShader(vs);
-        glDeleteShader(fs);
-        glDeleteProgram(program);
-        program = 0;
-        throw std::runtime_error("Shader program linking failed");
-    }
-
-    glDetachShader(program, vs);
-    glDetachShader(program, fs);
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-}
+Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath)
+    : Shader(SourceStringTag{}, loadTextFile(vertexPath), loadTextFile(fragmentPath)) {}
 
 Shader::Shader(SourceStringTag, const std::string& vertexSource, const std::string& fragmentSource)
     : program(glCreateProgram()) {
@@ -58,9 +29,9 @@ Shader::Shader(SourceStringTag, const std::string& vertexSource, const std::stri
     if (linked == 0) {
         GLint logLength = 0;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
-        std::vector<char> log(static_cast<size_t>(logLength));
+        std::vector<char> log(static_cast<std::size_t>(logLength));
         glGetProgramInfoLog(program, logLength, nullptr, log.data());
-        std::println(stderr, "[ERROR] Link failed: {}", log.data());
+        std::println(std::cerr, "[ERROR] Link failed: {}", log.data());
 
         glDeleteShader(vs);
         glDeleteShader(fs);
@@ -76,6 +47,11 @@ Shader::Shader(SourceStringTag, const std::string& vertexSource, const std::stri
 }
 
 Shader::~Shader() {
+    for (auto& [name, block] : uniformBlocks) {
+        if (block.buffer != 0) {
+            glDeleteBuffers(1, &block.buffer);
+        }
+    }
     if (program != 0) {
         glDeleteProgram(program);
     }
@@ -83,6 +59,11 @@ Shader::~Shader() {
 
 void Shader::bind() {
     glUseProgram(program);
+    for (const auto& [name, block] : uniformBlocks) {
+        if (block.buffer != 0) {
+            glBindBufferBase(GL_UNIFORM_BUFFER, block.binding, block.buffer);
+        }
+    }
 }
 
 void Shader::unbind() {
@@ -127,10 +108,52 @@ void Shader::setVec4Array(const std::string& name, const float* values, std::siz
     glUniform4fv(uniform(name), static_cast<GLsizei>(count), values);
 }
 
+Shader::UniformBlock* Shader::uniformBlock(const std::string& name) {
+    auto it = uniformBlocks.find(name);
+    if (it != uniformBlocks.end()) {
+        return it->second.buffer != 0 ? &it->second : nullptr;
+    }
+
+    UniformBlock& block = uniformBlocks[name];
+    const GLuint  index = glGetUniformBlockIndex(program, name.c_str());
+    if (index == GL_INVALID_INDEX) {
+        return nullptr;
+    }
+
+    GLint dataSize = 0;
+    glGetActiveUniformBlockiv(program, index, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
+
+    block.binding  = static_cast<GLuint>(uniformBlocks.size() - 1);
+    block.capacity = static_cast<std::size_t>(dataSize);
+    glUniformBlockBinding(program, index, block.binding);
+
+    // WebGL rejects draws whose bound buffer is smaller than the block, so allocate it whole.
+    glGenBuffers(1, &block.buffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, block.buffer);
+    glBufferData(GL_UNIFORM_BUFFER, dataSize, nullptr, GL_DYNAMIC_DRAW);
+    return &block;
+}
+
+void Shader::setUniformBlock(const std::string& name, const void* data, std::size_t size) {
+    UniformBlock* block = uniformBlock(name);
+    if (block == nullptr) {
+        return;
+    }
+    glBindBuffer(GL_UNIFORM_BUFFER, block->buffer);
+    if (size > block->capacity) {
+        glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(size), data, GL_DYNAMIC_DRAW);
+        block->capacity = size;
+    } else {
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, static_cast<GLsizeiptr>(size), data);
+    }
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glBindBufferBase(GL_UNIFORM_BUFFER, block->binding, block->buffer);
+}
+
 std::string Shader::loadTextFile(const std::string& path) {
     std::ifstream file(resolveResourcePath(path));
     if (!file.is_open()) {
-        std::println(stderr, "[ERROR] Failed to open file: {}", path);
+        std::println(std::cerr, "[ERROR] Failed to open file: {}", path);
         throw std::runtime_error("Failed to open shader file: " + path);
     }
     std::stringstream ss;
@@ -141,12 +164,12 @@ std::string Shader::loadTextFile(const std::string& path) {
 GLuint Shader::compile(GLenum type, const std::string& source) {
 #ifdef __EMSCRIPTEN__
     std::string processedSource = source;
-    size_t      verPos          = processedSource.find("#version 330 core");
+    std::size_t verPos          = processedSource.find("#version 330 core");
     if (verPos != std::string::npos) {
         processedSource.replace(verPos, 17, "#version 300 es");
     }
     if (processedSource.find("precision ") == std::string::npos) {
-        size_t versionEnd = processedSource.find('\n');
+        std::size_t versionEnd = processedSource.find('\n');
         if (versionEnd != std::string::npos) {
             processedSource.insert(versionEnd + 1, "precision highp float;\nprecision highp int;\n");
         }
@@ -164,13 +187,13 @@ GLuint Shader::compile(GLenum type, const std::string& source) {
     if (compiled == 0) {
         GLint logLength = 0;
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &logLength);
-        std::vector<char> log(static_cast<size_t>(logLength > 0 ? logLength : 1024));
+        std::vector<char> log(static_cast<std::size_t>(logLength > 0 ? logLength : 1024));
         glGetShaderInfoLog(id, static_cast<GLsizei>(log.size()), nullptr, log.data());
-        std::println(stderr, "[ERROR] Shader compilation failed: {}", log.data());
+        std::println(std::cerr, "[ERROR] Shader compilation failed: {}", log.data());
         glDeleteShader(id);
         throw std::runtime_error(std::string("Shader compilation failed: ") + log.data());
     }
     return id;
 }
 
-} // namespace GL
+} // namespace shark::GL

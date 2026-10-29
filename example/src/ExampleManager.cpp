@@ -1,16 +1,21 @@
-#include "ExampleManager.hpp"
-
-#include <format>
-#include <print>
+module;
 
 #include "imgui.h"
 
-#include "Application.hpp"
-#include "fast_multipole_method/FMMLayer.hpp"
-#include "fluid_simulation/FluidSim.hpp"
-#include "molecular_dynamics/MolecularDynamics.hpp"
-#include "ray_tracing_shader/RayTracingExample.hpp"
-#include "spinning_cube/SpinningCubeExample.hpp"
+module examples:ExampleManager.impl;
+
+import std;
+
+import :ExampleManager;
+import :fast_multipole_method.FMMLayer;
+import :fluid_simulation.FluidSim;
+import :molecular_dynamics.MolecularDynamics;
+import :ray_tracing_shader.RayTracingExample;
+import :spinning_cube.SpinningCubeExample;
+
+import shark;
+
+using namespace shark;
 
 ExampleManager::ExampleManager() = default;
 

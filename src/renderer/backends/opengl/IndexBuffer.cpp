@@ -1,8 +1,16 @@
-#include "renderer/backends/opengl/IndexBuffer.hpp"
+module;
 
-namespace GL {
+#include "GLHeader.hpp"
 
-IndexBuffer::IndexBuffer(const unsigned int* data, size_t count) : indexCount(count) {
+module shark:renderer.backends.opengl.IndexBuffer.impl;
+
+import std;
+
+import :renderer.backends.opengl.IndexBuffer;
+
+namespace shark::GL {
+
+IndexBuffer::IndexBuffer(const unsigned int* data, std::size_t count) : indexCount(count) {
     ebo.create();
     ebo.bind();
     ebo.data(static_cast<GLsizeiptr>(count * sizeof(unsigned int)), data, GL_STATIC_DRAW);
@@ -16,10 +24,10 @@ void IndexBuffer::unbind() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void IndexBuffer::setData(const unsigned int* data, size_t count) {
+void IndexBuffer::setData(const unsigned int* data, std::size_t count) {
     ebo.bind();
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(count * sizeof(unsigned int)), data);
     indexCount = count;
 }
 
-} // namespace GL
+} // namespace shark::GL

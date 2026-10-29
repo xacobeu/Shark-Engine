@@ -10,12 +10,13 @@ A cross-platform C++26 rendering engine.
 
 ## Prerequisites
 
-* **C++26 Compiler**
-* **CMake**
+* **Clang 21+** (the engine is built as C++20 modules and uses `import std;`)
+* **A standard library that ships the `std` module**: MSVC STL (Visual Studio 17.6+), libstdc++ from GCC 15+, or libc++ (Emscripten's works out of the box)
+* **CMake 3.28+**
+* **Ninja** (CMake's Makefile generators can't build C++ modules)
 
 (optional):
 * **make**
-* **Ninja**
 * **Emscripten SDK** 
 
 ## Running the Demo
@@ -45,12 +46,12 @@ target_link_libraries(MyGame PRIVATE SharkEngine::SharkEngine)
 #### Building Your Game
 * **Native Desktop**:
   ```bash
-  cmake -B build
+  cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++
   cmake --build build
   ```
 * **WebAssembly (Browser)**:
   ```bash
-  emcmake cmake -B build-web
+  emcmake cmake -B build-web -G Ninja
   cmake --build build-web
   ```
   SharkEngine automatically configures WebGL, preloads engine shaders, and outputs `MyGame.html`.
@@ -67,9 +68,9 @@ Link against the library target in your project's `CMakeLists.txt`:
    add_executable(MyGame src/Main.cpp)
    target_link_libraries(MyGame PRIVATE SharkEngine::SharkEngine)
 ```
-Include headers and run:
+Import the engine module and run:
 ```cpp
-#include "Application.hpp"
+import shark;
 
 int main() {
       Application app{{ .width = 960, .height = 640, .title = "My Game" }};

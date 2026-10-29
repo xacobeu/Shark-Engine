@@ -8,6 +8,7 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 120
+IndentExportBlock: false
 
 # Braces & Control Flow
 BreakBeforeBraces: Attach
@@ -53,6 +54,8 @@ SortIncludes:
   IgnoreCase: false
 IncludeBlocks: Regroup
 IncludeCategories:
+  - Regex: 'GLHeader\.hpp"$'
+    Priority: 1
   - Regex: '^"imgui.*'
     Priority: 3
   - Regex: '^"stb_.*'

@@ -1,16 +1,15 @@
-#include "renderer/scene/node_types/OrbitCamera.hpp"
+module shark:renderer.scene.node_types.OrbitCamera.impl;
 
-#include <algorithm>
-#include <cmath>
-#include <numbers>
+import std;
 
-#include "imgui.h"
-#include <GLFW/glfw3.h>
+import :Application;
+import :renderer.scene.node_types.OrbitCamera;
+import :util.Vector;
 
-#include "Application.hpp"
+namespace shark {
 
 void OrbitCamera::update(Application* app, float) {
-    const bool imguiWantsMouse = (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
+    const bool imguiWantsMouse = Application::isMouseCaptured();
 
     // Zoom
     double scrollY = app->getScrollY();
@@ -79,3 +78,5 @@ void OrbitCamera::update(Application* app, float) {
         isPanning = false;
     }
 }
+
+} // namespace shark

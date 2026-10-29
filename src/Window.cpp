@@ -1,11 +1,6 @@
-#include "Window.hpp"
+module;
 
-#ifdef SHARK_NO_GLAD
-#include <GLES3/gl3.h>
-#else
-#include <glad/glad.h>
-#endif
-#include <cmath>
+#include "renderer/backends/opengl/GLHeader.hpp"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -16,8 +11,14 @@
 #include <emscripten.h>
 #endif
 
-#include <filesystem>
-#include <print>
+module shark:Window.impl;
+
+import std;
+
+import :Window;
+import :util.ResourcePath;
+
+namespace shark {
 
 Window::Window(int width, int height, const char* title) {
     if (glfwInit() == 0) {
@@ -89,8 +90,9 @@ void Window::initImGui() {
     io.IniFilename = nullptr;
 #endif
     io.Fonts->Clear();
-    if (std::filesystem::exists("res/font/AtkinsonHyperlegible-Regular.ttf")) {
-        io.Fonts->AddFontFromFileTTF("res/font/AtkinsonHyperlegible-Regular.ttf", 20.0f);
+    const std::string fontPath = resolveResourcePath("res/font/AtkinsonHyperlegible-Regular.ttf");
+    if (std::filesystem::exists(fontPath)) {
+        io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 20.0f);
     } else {
         io.Fonts->AddFontDefault();
     }
@@ -101,7 +103,7 @@ void Window::initImGui() {
 #ifdef __EMSCRIPTEN__
     ImGui_ImplOpenGL3_Init("#version 300 es");
 #else
-    ImGui_ImplOpenGL3_Init("#version 450");
+    ImGui_ImplOpenGL3_Init("#version 330");
 #endif
 }
 
@@ -121,6 +123,14 @@ void Window::endImGuiFrame() {
         ImGui::RenderPlatformWindowsDefault();
         glfwMakeContextCurrent(backup_current_context);
     }
+}
+
+bool Window::isMouseCaptured() noexcept {
+    return (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
+}
+
+bool Window::isKeyboardCaptured() noexcept {
+    return (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureKeyboard;
 }
 
 // Mouse callbacks
@@ -225,13 +235,13 @@ bool Window::isMouseButtonPressed(int button) const {
 }
 
 double Window::getCursorX() const {
-    double x = NAN;
+    double x = std::numeric_limits<double>::quiet_NaN();
     glfwGetCursorPos(window, &x, nullptr);
     return x;
 }
 
 double Window::getCursorY() const {
-    double y = NAN;
+    double y = std::numeric_limits<double>::quiet_NaN();
     glfwGetCursorPos(window, nullptr, &y);
     return y;
 }
@@ -241,21 +251,15 @@ void Window::getDimensions(int& width, int& height) const {
 }
 
 int Window::getWidth() const {
-    int w = NAN;
+    int w = 0;
     glfwGetFramebufferSize(window, &w, nullptr);
     return w;
 }
 
 int Window::getHeight() const {
-    int h = NAN;
+    int h = 0;
     glfwGetFramebufferSize(window, nullptr, &h);
     return h;
 }
 
-void Window::setVSync(bool enabled) {
-#ifndef __EMSCRIPTEN__
-    glfwSwapInterval(enabled ? 1 : 0);
-#else
-    (void)enabled;
-#endif
-}
+} // namespace shark

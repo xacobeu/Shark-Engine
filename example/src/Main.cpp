@@ -1,7 +1,10 @@
-#include <memory>
 
-#include "Application.hpp"
-#include "ExampleManager.hpp"
+import std;
+
+import examples;
+import shark;
+
+using namespace shark;
 
 int main() {
     Application app{

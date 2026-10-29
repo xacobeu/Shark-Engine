@@ -12,10 +12,15 @@ uniform int u_EnableShadows;
 uniform int u_EnableReflections;
 uniform float u_ReflectionStrength;
 
-const int MAX_SPHERES = 64;
+const int MAX_SPHERES = 128;
 uniform int u_SphereCount;
-uniform vec4 u_SpherePosRad[MAX_SPHERES];     // xyz = center, w = radius
-uniform vec4 u_SphereColShiny[MAX_SPHERES];   // xyz = color, w = shininess (0.0 to 1.0)
+struct Sphere {
+    vec4 posRad;    // xyz = center, w = radius
+    vec4 colShiny;  // xyz = color, w = shininess (0.0 to 1.0)
+};
+layout(std140) uniform SphereBlock {
+    Sphere u_Spheres[MAX_SPHERES];
+};
 
 float hitSphere(vec3 center, float radius, vec3 ro, vec3 rd) {
     vec3 oc = ro - center;
@@ -80,14 +85,14 @@ vec3 trace(vec3 ro, vec3 rd) {
         // Test all dynamic sphere instances
         for (int i = 0; i < MAX_SPHERES; i++) {
             if (i >= u_SphereCount) break;
-            vec4 posRad = u_SpherePosRad[i];
+            vec4 posRad = u_Spheres[i].posRad;
             float t = hitSphere(posRad.xyz, posRad.w, currentRo, currentRd);
             if (t > 0.0 && t < minT) {
                 minT = t;
                 hitType = 2;
                 hitNormal = normalize((currentRo + currentRd * t) - posRad.xyz);
-                hitColor = u_SphereColShiny[i].xyz;
-                hitShininess = u_SphereColShiny[i].w;
+                hitColor = u_Spheres[i].colShiny.xyz;
+                hitShininess = u_Spheres[i].colShiny.w;
             }
         }
         
@@ -111,7 +116,7 @@ vec3 trace(vec3 ro, vec3 rd) {
             vec3 shadowRo = hitPoint + hitNormal * 0.002;
             for (int i = 0; i < MAX_SPHERES; i++) {
                 if (i >= u_SphereCount) break;
-                vec4 posRad = u_SpherePosRad[i];
+                vec4 posRad = u_Spheres[i].posRad;
                 if (hitSphere(posRad.xyz, posRad.w, shadowRo, lightDir) > 0.0) {
                     shadowMult = 0.25;
                     break;

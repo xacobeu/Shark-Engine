@@ -1,22 +1,22 @@
-#include "renderer/scene/node_types/FlyingCamera.hpp"
+module shark:renderer.scene.node_types.FlyingCamera.impl;
 
-#include <algorithm>
-#include <cmath>
-#include <numbers>
+import std;
 
-#include "imgui.h"
-#include <GLFW/glfw3.h>
+import :Application;
+import :Input;
+import :renderer.scene.node_types.FlyingCamera;
+import :util.Vector;
 
-#include "Application.hpp"
+namespace shark {
 
 void FlyingCamera::update(Application* app, float deltaTime) {
-    const bool imguiWantsMouse = (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
+    const bool imguiWantsMouse = Application::isMouseCaptured();
 
     double mouseX = app->getCursorX();
     double mouseY = app->getCursorY();
 
     // Free look rotation
-    if (app->isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) || app->isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+    if (app->isMouseButtonPressed(MouseButton::Left) || app->isMouseButtonPressed(MouseButton::Right)) {
         if (!isDragging) {
             if (!imguiWantsMouse) {
                 isDragging = true;
@@ -60,24 +60,26 @@ void FlyingCamera::update(Application* app, float deltaTime) {
     Vector3 up    = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
     Vector3 pos   = getPosition();
 
-    if (app->isKeyPressed(GLFW_KEY_W)) {
+    if (app->isKeyPressed(Key::W)) {
         pos += direction * speed;
     }
-    if (app->isKeyPressed(GLFW_KEY_S)) {
+    if (app->isKeyPressed(Key::S)) {
         pos -= direction * speed;
     }
-    if (app->isKeyPressed(GLFW_KEY_A)) {
+    if (app->isKeyPressed(Key::A)) {
         pos -= right * speed;
     }
-    if (app->isKeyPressed(GLFW_KEY_D)) {
+    if (app->isKeyPressed(Key::D)) {
         pos += right * speed;
     }
-    if (app->isKeyPressed(GLFW_KEY_E) || app->isKeyPressed(GLFW_KEY_SPACE)) {
+    if (app->isKeyPressed(Key::E) || app->isKeyPressed(Key::Space)) {
         pos += up * speed;
     }
-    if (app->isKeyPressed(GLFW_KEY_Q) || app->isKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
+    if (app->isKeyPressed(Key::Q) || app->isKeyPressed(Key::LeftShift)) {
         pos -= up * speed;
     }
 
     setPosition(pos);
 }
+
+} // namespace shark

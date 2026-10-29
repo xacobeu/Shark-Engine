@@ -7,7 +7,6 @@ project(SharkEngine LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_COLOR_DIAGNOSTICS ON)
 
@@ -29,13 +28,22 @@ add_compile_options(
     $<$<BOOL:${EMSCRIPTEN}>:-msimd128>
 )
 
+include(cmake/StdModule.cmake)
+
 # Core Engine Target
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
-add_library(SharkEngine ${ENGINE_SOURCES})
+file(GLOB_RECURSE ENGINE_MODULES CONFIGURE_DEPENDS "src/*.cppm")
+file(GLOB_RECURSE ENGINE_INTERNAL_MODULES CONFIGURE_DEPENDS "src/renderer/backends/opengl/*.cppm")
+list(REMOVE_ITEM ENGINE_MODULES ${ENGINE_INTERNAL_MODULES})
+add_library(SharkEngine)
 add_library(SharkEngine::SharkEngine ALIAS SharkEngine)
+target_sources(SharkEngine
+    PUBLIC FILE_SET CXX_MODULES BASE_DIRS src FILES ${ENGINE_MODULES}
+    PRIVATE FILE_SET engine_impl TYPE CXX_MODULES BASE_DIRS src FILES ${ENGINE_INTERNAL_MODULES} ${ENGINE_SOURCES}
+)
 
-target_include_directories(SharkEngine PUBLIC src)
 target_link_libraries(SharkEngine PUBLIC
+    shark_std
     imgui::imgui
     glfw
     glad::glad
@@ -58,9 +66,9 @@ if(EMSCRIPTEN)
 elseif(NOT WIN32)
     find_package(TBB QUIET)
     if(TBB_FOUND)
-        target_link_libraries(SharkEngine PUBLIC TBB::tbb)
+        target_link_libraries(shark_std PUBLIC TBB::tbb)
     else()
-        target_compile_definitions(SharkEngine PUBLIC
+        target_compile_definitions(shark_std PUBLIC
             SHARK_NO_PARALLEL_EXECUTION
             _PSTL_PAR_BACKEND_SERIAL
         )

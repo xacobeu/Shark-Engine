@@ -1,10 +1,24 @@
-#include "renderer/Renderer.hpp"
+module shark:renderer.Renderer.impl;
 
-#include <algorithm>
-#include <utility>
+import std;
 
-#include "renderer/geometry/Vertex.hpp"
-#include "util/Matrix4.hpp"
+import :renderer.Renderer;
+import :renderer.backends.IInstanceBuffer;
+import :renderer.backends.IRenderDevice;
+import :renderer.backends.IShader;
+import :renderer.backends.ITexture;
+import :renderer.geometry.Mesh;
+import :renderer.geometry.Vertex;
+import :renderer.scene.Node;
+import :renderer.scene.Scene;
+import :renderer.scene.node_types.Camera;
+import :renderer.scene.node_types.Entity;
+import :renderer.scene.node_types.InstancedEntity;
+import :renderer.scene.node_types.Light;
+import :util.Matrix4;
+import :util.Vector;
+
+namespace shark {
 
 void Renderer::init(IRenderDevice* renderDevice) {
     device = renderDevice;
@@ -230,3 +244,5 @@ IInstanceBuffer& Renderer::uploadInstancesIfChanged(const InstancedEntity& entit
     }
     return *cached.buffer;
 }
+
+} // namespace shark

@@ -1,27 +1,20 @@
-#include "renderer/backends/opengl/VertexBuffer.hpp"
+module;
 
-#include <bit>
+#include "GLHeader.hpp"
+
 #include <cstddef>
-#include <cstdint>
 
-#include "renderer/geometry/Vertex.hpp"
-#ifdef SHARK_NO_GLAD
-#include <GLES3/gl3.h>
-#else
-#include <glad/glad.h>
-#endif
+module shark:renderer.backends.opengl.VertexBuffer.impl;
 
-namespace GL {
+import std;
 
-namespace {
+import :renderer.geometry.Vertex;
 
-[[nodiscard]] auto bufferOffset(std::size_t offset) noexcept -> const void* {
-    return std::bit_cast<const void*>(static_cast<std::uintptr_t>(offset));
-}
+import :renderer.backends.opengl.VertexBuffer;
 
-} // namespace
+namespace shark::GL {
 
-VertexBuffer::VertexBuffer(const void* data, size_t size) {
+VertexBuffer::VertexBuffer(const void* data, std::size_t size) {
     vao.create();
     vbo.create();
 
@@ -53,9 +46,9 @@ void VertexBuffer::unbind() {
     vao.unbind();
 }
 
-void VertexBuffer::setData(const void* data, size_t size) {
+void VertexBuffer::setData(const void* data, std::size_t size) {
     vbo.bind();
     glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(size), data);
 }
 
-} // namespace GL
+} // namespace shark::GL

@@ -1,24 +1,22 @@
-#include "MolecularDynamics.hpp"
-
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <functional>
-#include <random>
-#include <ranges>
-#include <utility>
+module;
 
 #include "imgui.h"
 
-#include "Application.hpp"
-#include "renderer/geometry/MeshFactory.hpp"
-#include "util/Execution.hpp"
+module examples:molecular_dynamics.MolecularDynamics.impl;
 
-MolecularDynamics::MolecularDynamics(size_t atomCount)
-    : numAtoms(std::max<size_t>(1, atomCount)), uiAtomCount(static_cast<int>(numAtoms)) {}
+import std;
 
-void MolecularDynamics::setAtomCount(size_t count) {
-    numAtoms    = std::max<size_t>(1, count);
+import :molecular_dynamics.MolecularDynamics;
+
+import shark;
+
+using namespace shark;
+
+MolecularDynamics::MolecularDynamics(std::size_t atomCount)
+    : numAtoms(std::max<std::size_t>(1, atomCount)), uiAtomCount(static_cast<int>(numAtoms)) {}
+
+void MolecularDynamics::setAtomCount(std::size_t count) {
+    numAtoms    = std::max<std::size_t>(1, count);
     uiAtomCount = static_cast<int>(numAtoms);
     if (sphereMesh != nullptr) {
         initEntities();
@@ -32,23 +30,18 @@ void MolecularDynamics::initEntities() {
     float   camDistance = (camera != nullptr) ? camera->getDistance() : 16.0f;
 
     scene.clear();
-    camera = scene.add<OrbitCamera>()->setTarget(camTarget)->setDistance(camDistance)->setRotation(camRot);
-
-    atomEntities.clear();
-    atomEntities.reserve(numAtoms);
+    camera    = scene.add<OrbitCamera>()->setTarget(camTarget)->setDistance(camDistance)->setRotation(camRot);
+    atomGroup = scene.add<InstancedEntity>()->setMesh(sphereMesh);
+    atomGroup->getInstancesMutable().resize(numAtoms);
     particles.resize(numAtoms);
-
-    for (size_t i = 0; i < numAtoms; ++i) {
-        auto* entity =
-            scene.add<Entity>()->setMesh(sphereMesh)->setScale({.x = atomRadius, .y = atomRadius, .z = atomRadius});
-        atomEntities.push_back(entity);
-    }
 }
 
 void MolecularDynamics::onAttach() {
     getApp()->setScene(&scene);
 
-    sphereMesh = std::make_shared<Mesh>(MeshFactory::sphere(8, Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f}));
+    sphereMesh = std::make_shared<Mesh>(
+        MeshFactory::sphere(8, Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f}).scale(atomRadius)
+    );
 
     initEntities();
     resetSimulation();
@@ -58,16 +51,17 @@ void MolecularDynamics::onDetach() {
     if ((getApp() != nullptr) && getApp()->getScene() == &scene) {
         getApp()->setScene(nullptr);
     }
-    atomEntities.clear();
-    camera = nullptr;
+    atomGroup = nullptr;
+    camera    = nullptr;
     sphereMesh.reset();
     scene.clear();
 }
 
 void MolecularDynamics::resetSimulation() {
-    if (atomEntities.size() != numAtoms) {
+    if ((atomGroup == nullptr) || atomGroup->getInstances().size() != numAtoms) {
         initEntities();
     }
+    auto& instanceData = atomGroup->getInstancesMutable();
     previousPositions.clear();
 
     std::random_device                    rd;
@@ -90,7 +84,7 @@ void MolecularDynamics::resetSimulation() {
     float halfY = static_cast<float>(ny - 1) * 0.5f;
     float halfZ = static_cast<float>(nz - 1) * 0.5f;
 
-    size_t idx = 0;
+    std::size_t idx = 0;
     for (int x = 0; x < nx && idx < numAtoms; ++x) {
         for (int y = 0; y < ny && idx < numAtoms; ++y) {
             for (int z = 0; z < nz && idx < numAtoms; ++z) {
@@ -116,8 +110,8 @@ void MolecularDynamics::resetSimulation() {
                                                ? Vector4{.x = 0.2f, .y = 0.75f, .z = 0.95f, .w = 1.0f}  // Cyan
                                                : Vector4{.x = 1.0f, .y = 0.55f, .z = 0.15f, .w = 1.0f}; // Amber
 
-                atomEntities.at(idx)->setColor(particles.colors.at(idx));
-                atomEntities.at(idx)->setPosition(pos);
+                instanceData.at(idx).color       = particles.colors.at(idx);
+                instanceData.at(idx).modelMatrix = Matrix4::translate(pos);
 
                 ++idx;
             }
@@ -126,7 +120,7 @@ void MolecularDynamics::resetSimulation() {
 
     if (numAtoms > 1) {
         avgVel /= static_cast<float>(numAtoms);
-        for (size_t i = 0; i < numAtoms; ++i) {
+        for (std::size_t i = 0; i < numAtoms; ++i) {
             particles.velocities.at(i) -= avgVel;
         }
     }
@@ -140,7 +134,7 @@ Vector3 MolecularDynamics::pairForce(const Vector3& r, float r2, const Potential
     return r * (24.0f * epsilon * invR2 * s6invR6 * ((2.0f * s6invR6) - 1.0f));
 }
 
-void MolecularDynamics::applyPairForce(size_t i, size_t j, const PotentialParams& params) {
+void MolecularDynamics::applyPairForce(std::size_t i, std::size_t j, const PotentialParams& params) {
     Vector3 r  = particles.positions.at(i) - particles.positions.at(j);
     float   r2 = r.lengthSq();
     if (r2 > params.rCut2) {
@@ -154,7 +148,7 @@ void MolecularDynamics::applyPairForce(size_t i, size_t j, const PotentialParams
 
 void MolecularDynamics::buildCellList(int nCells) {
     const int totalCells = nCells * nCells * nCells;
-    cellHead.assign(static_cast<size_t>(totalCells), -1);
+    cellHead.assign(static_cast<std::size_t>(totalCells), -1);
     nextAtom.resize(numAtoms, -1);
     for (auto& bucket : colorCells) {
         bucket.clear();
@@ -162,27 +156,27 @@ void MolecularDynamics::buildCellList(int nCells) {
 
     const float invCellSize = static_cast<float>(nCells) / (2.0f * boxSize);
 
-    for (size_t i = 0; i < numAtoms; ++i) {
+    for (std::size_t i = 0; i < numAtoms; ++i) {
         int cx = std::clamp(static_cast<int>((particles.positions.at(i).x + boxSize) * invCellSize), 0, nCells - 1);
         int cy = std::clamp(static_cast<int>((particles.positions.at(i).y + boxSize) * invCellSize), 0, nCells - 1);
         int cz = std::clamp(static_cast<int>((particles.positions.at(i).z + boxSize) * invCellSize), 0, nCells - 1);
 
         int cIdx       = cx + (nCells * (cy + (nCells * cz)));
-        int prevHead   = cellHead.at(static_cast<size_t>(cIdx));
+        int prevHead   = cellHead.at(static_cast<std::size_t>(cIdx));
         nextAtom.at(i) = prevHead;
         if (prevHead == -1) {
             // 3x3x2 coloring: same-colored cells never share a forward neighbor, so a color can run in parallel
             const int color = (cx % 3) + (3 * (cy % 3)) + (9 * (cz & 1));
             colorCells[static_cast<std::size_t>(color)].push_back({.x = cx, .y = cy, .z = cz});
         }
-        cellHead.at(static_cast<size_t>(cIdx)) = static_cast<int>(i);
+        cellHead.at(static_cast<std::size_t>(cIdx)) = static_cast<int>(i);
     }
 }
 
 void MolecularDynamics::interactSameCell(int i, const PotentialParams& params) {
-    for (int a = i; a != -1; a = nextAtom.at(static_cast<size_t>(a))) {
-        for (int b = nextAtom.at(static_cast<size_t>(a)); b != -1; b = nextAtom.at(static_cast<size_t>(b))) {
-            applyPairForce(static_cast<size_t>(a), static_cast<size_t>(b), params);
+    for (int a = i; a != -1; a = nextAtom.at(static_cast<std::size_t>(a))) {
+        for (int b = nextAtom.at(static_cast<std::size_t>(a)); b != -1; b = nextAtom.at(static_cast<std::size_t>(b))) {
+            applyPairForce(static_cast<std::size_t>(a), static_cast<std::size_t>(b), params);
         }
     }
 }
@@ -216,14 +210,14 @@ void MolecularDynamics::interactNeighborCells(CellCoord cell, int nCells, int he
         }
 
         int nIdx = nx + (nCells * (ny + (nCells * nz)));
-        int j    = cellHead.at(static_cast<size_t>(nIdx));
+        int j    = cellHead.at(static_cast<std::size_t>(nIdx));
         if (j == -1) {
             continue;
         }
 
-        for (int a = headAtom; a != -1; a = nextAtom.at(static_cast<size_t>(a))) {
-            for (int b = j; b != -1; b = nextAtom.at(static_cast<size_t>(b))) {
-                applyPairForce(static_cast<size_t>(a), static_cast<size_t>(b), params);
+        for (int a = headAtom; a != -1; a = nextAtom.at(static_cast<std::size_t>(a))) {
+            for (int b = j; b != -1; b = nextAtom.at(static_cast<std::size_t>(b))) {
+                applyPairForce(static_cast<std::size_t>(a), static_cast<std::size_t>(b), params);
             }
         }
     }
@@ -233,7 +227,7 @@ void MolecularDynamics::resolveCellInteractions(int nCells, const PotentialParam
     for (const auto& bucket : colorCells) {
         shark::exec::for_each(shark::exec::par, bucket, [this, nCells, &params](const CellCoord& cell) {
             int cIdx = cell.x + (nCells * (cell.y + (nCells * cell.z)));
-            int i    = cellHead.at(static_cast<size_t>(cIdx));
+            int i    = cellHead.at(static_cast<std::size_t>(cIdx));
             if (i != -1) {
                 interactSameCell(i, params);
                 interactNeighborCells(cell, nCells, i, params);
@@ -243,11 +237,11 @@ void MolecularDynamics::resolveCellInteractions(int nCells, const PotentialParam
 }
 
 void MolecularDynamics::computeForcesDirect(const PotentialParams& params) {
-    shark::exec::for_each_index(shark::exec::par, numAtoms, [this, &params](size_t i) {
+    shark::exec::for_each_index(shark::exec::par, numAtoms, [this, &params](std::size_t i) {
         Vector3       accForce{.x = 0.0f, .y = 0.0f, .z = 0.0f};
         const Vector3 posI = particles.positions[i];
 
-        for (size_t j = 0; j < numAtoms; ++j) {
+        for (std::size_t j = 0; j < numAtoms; ++j) {
             if (i == j) {
                 continue;
             }
@@ -290,7 +284,7 @@ void MolecularDynamics::integrate(float dt) {
     const float dampFactor = (damping > 0.0f) ? std::max(0.0f, 1.0f - (damping * dt)) : 1.0f;
 
     // Velocity Verlet: half kick + drift
-    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, halfDt, dt, limit, dampFactor](size_t i) {
+    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, halfDt, dt, limit, dampFactor](std::size_t i) {
         particles.velocities[i] += particles.forces[i] * halfDt;
         particles.velocities[i] *= dampFactor;
         particles.positions[i] += particles.velocities[i] * dt;
@@ -324,7 +318,7 @@ void MolecularDynamics::integrate(float dt) {
     computeForces();
 
     // Second half kick with the new forces
-    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, halfDt](size_t i) {
+    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, halfDt](std::size_t i) {
         particles.velocities[i] += particles.forces[i] * halfDt;
     });
 }
@@ -336,8 +330,7 @@ void MolecularDynamics::onFixedUpdate(float /*fixedDt*/) {
 
     previousPositions = particles.positions;
 
-    constexpr float SUB_DT   = 0.004f;
-    const int       subSteps = (numAtoms > 300) ? 2 : 4;
+    const int subSteps = (numAtoms > 300) ? 2 : 4;
     for (auto _ : std::views::iota(0, subSteps)) {
         integrate(SUB_DT);
     }
@@ -352,7 +345,7 @@ void MolecularDynamics::onUpdate(float deltaTime) {
 
     const float totalKinetic = shark::exec::transform_reduce_index(
         shark::exec::par_unseq, numAtoms, 0.0f, std::plus<>{},
-        [this](size_t i) { return 0.5f * particles.velocities[i].lengthSq(); }
+        [this](std::size_t i) { return 0.5f * particles.velocities[i].lengthSq(); }
     );
 
     currentKineticEnergy = totalKinetic;
@@ -360,11 +353,14 @@ void MolecularDynamics::onUpdate(float deltaTime) {
 
     const bool  canInterpolate = previousPositions.size() == numAtoms;
     const float alpha          = getApp()->getFixedAlpha();
-    shark::exec::for_each_index(shark::exec::par_unseq, numAtoms, [this, canInterpolate, alpha](size_t i) {
-        atomEntities[i]->setPosition(
-            canInterpolate ? lerp(previousPositions[i], particles.positions[i], alpha) : particles.positions[i]
-        );
-    });
+    auto&       instanceData   = atomGroup->getInstancesMutable();
+    shark::exec::for_each_index(
+        shark::exec::par_unseq, numAtoms, [this, &instanceData, canInterpolate, alpha](std::size_t i) {
+            const Vector3 pos           = canInterpolate ? lerp(previousPositions[i], particles.positions[i], alpha)
+                                                         : particles.positions[i];
+            instanceData[i].modelMatrix = Matrix4::translate(pos);
+        }
+    );
 }
 
 void MolecularDynamics::renderImGui() {
@@ -372,8 +368,8 @@ void MolecularDynamics::renderImGui() {
     ImGui::SetNextWindowSize(ImVec2(340, 360), ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
 
-    if (ImGui::SliderInt("Particle Count", &uiAtomCount, 1, 100)) {
-        uiAtomCount = std::clamp(uiAtomCount, 1, 100);
+    if (ImGui::SliderInt("Particle Count", &uiAtomCount, 1, 2000)) {
+        uiAtomCount = std::clamp(uiAtomCount, 1, 2000);
     }
 
     if (ImGui::Button(isPaused ? " Resume " : " Pause ")) {
@@ -388,7 +384,7 @@ void MolecularDynamics::renderImGui() {
 
     ImGui::Separator();
     if (ImGui::IsItemDeactivatedAfterEdit() && uiAtomCount > 0 && std::cmp_not_equal(uiAtomCount, numAtoms)) {
-        numAtoms = static_cast<size_t>(uiAtomCount);
+        numAtoms = static_cast<std::size_t>(uiAtomCount);
         initEntities();
         resetSimulation();
     }

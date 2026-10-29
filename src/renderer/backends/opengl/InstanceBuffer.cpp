@@ -1,8 +1,14 @@
-#include "renderer/backends/opengl/InstanceBuffer.hpp"
+module;
 
-#include <algorithm>
+#include "GLHeader.hpp"
 
-namespace GL {
+module shark:renderer.backends.opengl.InstanceBuffer.impl;
+
+import std;
+
+import :renderer.backends.opengl.InstanceBuffer;
+
+namespace shark::GL {
 
 void InstanceBuffer::setData(const void* data, std::size_t size) {
     vbo.create();
@@ -15,4 +21,4 @@ void InstanceBuffer::setData(const void* data, std::size_t size) {
     vbo.unbind();
 }
 
-} // namespace GL
+} // namespace shark::GL

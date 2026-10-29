@@ -1,15 +1,16 @@
-#include "RayTracingExample.hpp"
-
-#include <algorithm>
-#include <cmath>
-#include <random>
-#include <span>
-#include <utility>
+module;
 
 #include "imgui.h"
 
-#include "Application.hpp"
-#include "renderer/geometry/Vertex.hpp"
+module examples:ray_tracing_shader.RayTracingExample.impl;
+
+import std;
+
+import :ray_tracing_shader.RayTracingExample;
+
+import shark;
+
+using namespace shark;
 
 namespace {
 Vector3 hsvToRgb(float h, float s, float v) {
@@ -199,24 +200,23 @@ void RayTracingExample::onRender(Renderer&) {
     int count = std::clamp(sphereCount, 1, static_cast<int>(spheres.size()));
     raytraceShader->setInt("u_SphereCount", count);
 
-    constexpr auto                      SPHERE_DATA_SIZE = static_cast<std::size_t>(MAX_SPHERES) * 4;
-    std::array<float, SPHERE_DATA_SIZE> posRadData{};
-    std::array<float, SPHERE_DATA_SIZE> colShinyData{};
+    struct GpuSphere {
+        Vector4 posRad;
+        Vector4 colShiny;
+    };
+    std::array<GpuSphere, MAX_SPHERES> sphereData{};
     for (std::size_t i = 0; std::cmp_less(i, count); ++i) {
-        const std::size_t base = i * 4;
-        posRadData[base + 0]   = spheres[i].currentPos.x;
-        posRadData[base + 1]   = spheres[i].currentPos.y;
-        posRadData[base + 2]   = spheres[i].currentPos.z;
-        posRadData[base + 3]   = spheres[i].radius;
-
-        colShinyData[base + 0] = spheres[i].color.x;
-        colShinyData[base + 1] = spheres[i].color.y;
-        colShinyData[base + 2] = spheres[i].color.z;
-        colShinyData[base + 3] = spheres[i].shininess;
+        const Vector3& pos = spheres[i].currentPos;
+        const Vector3& col = spheres[i].color;
+        sphereData[i]      = {
+            .posRad   = Vector4{.x = pos.x, .y = pos.y, .z = pos.z, .w = spheres[i].radius},
+            .colShiny = Vector4{.x = col.x, .y = col.y, .z = col.z, .w = spheres[i].shininess},
+        };
     }
 
-    raytraceShader->setVec4Array("u_SpherePosRad[0]", posRadData.data(), static_cast<std::size_t>(count));
-    raytraceShader->setVec4Array("u_SphereColShiny[0]", colShinyData.data(), static_cast<std::size_t>(count));
+    raytraceShader->setUniformBlock(
+        "SphereBlock", sphereData.data(), static_cast<std::size_t>(count) * sizeof(GpuSphere)
+    );
 
     quadVbo->bind();
     getApp()->getDevice()->drawArrays(6);

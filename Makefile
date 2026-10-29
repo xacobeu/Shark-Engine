@@ -41,11 +41,11 @@ clean:
 	rm -rf build
 
 format:
-	@find src example -type f \( -name "*.cpp" -o -name "*.hpp" \) -exec clang-format -i {} +
+	@find src example -type f \( -name "*.cpp" -o -name "*.cppm" -o -name "*.hpp" \) -exec clang-format -i {} +
 	@echo "Code formatting complete."
 
 check-format:
-	@find src example -type f \( -name "*.cpp" -o -name "*.hpp" \) -exec clang-format --dry-run --Werror {} +
+	@find src example -type f \( -name "*.cpp" -o -name "*.cppm" -o -name "*.hpp" \) -exec clang-format --dry-run --Werror {} +
 	@echo "All files passed formatting check."
 
 tidy:

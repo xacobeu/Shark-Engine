@@ -1,16 +1,17 @@
-#include "FluidSim.hpp"
-
-#include <algorithm>
-#include <cmath>
-#include <numbers>
-#include <random>
-#include <ranges>
+module;
 
 #include "imgui.h"
-#include <GLFW/glfw3.h>
 
-#include "Application.hpp"
-#include "renderer/geometry/MeshFactory.hpp"
+module examples:fluid_simulation.FluidSim.impl;
+
+import std;
+
+import :fluid_simulation.FluidSim;
+import :fluid_simulation.Particle;
+
+import shark;
+
+using namespace shark;
 
 namespace {
 inline float randomFloat() {
@@ -117,7 +118,7 @@ void FluidSim::onAttach() {
     getApp()->setScene(&scene);
 
     camera = scene.add<OrbitCamera>()->setDistance(10.0f);
-    camera->setRotateButton(GLFW_MOUSE_BUTTON_RIGHT);
+    camera->setRotateButton(MouseButton::Right);
     camera->setPanEnabled(false);
 
     auto sharedSphereMesh = std::make_shared<Mesh>(
@@ -152,11 +153,11 @@ void FluidSim::onUpdate(float deltaTime) {
     }
 
     // Process interactive mouse dragging of the box
-    const bool imguiWantsMouse = (ImGui::GetCurrentContext() != nullptr) && ImGui::GetIO().WantCaptureMouse;
+    const bool imguiWantsMouse = Application::isMouseCaptured();
     double     mouseX          = getApp()->getCursorX();
     double     mouseY          = getApp()->getCursorY();
 
-    if (getApp()->isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+    if (getApp()->isMouseButtonPressed(MouseButton::Left)) {
         if (!isDraggingBox) {
             if (!imguiWantsMouse) {
                 isDraggingBox = true;

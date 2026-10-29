@@ -1,15 +1,13 @@
-#include "AdaptiveFMM.hpp"
+module examples:fast_multipole_method.AdaptiveFMM.impl;
 
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <functional>
-#include <numbers>
-#include <type_traits>
+import std;
 
-#include "util/Execution.hpp"
-#include "util/SIMD.hpp"
+import :fast_multipole_method.AdaptiveFMM;
+import :fast_multipole_method.Particle;
+
+import shark;
+
+using namespace shark;
 
 namespace {
 

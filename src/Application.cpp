@@ -1,13 +1,23 @@
-#include "Application.hpp"
-
-#include <algorithm>
-#include <chrono>
+module;
 
 #include <GLFW/glfw3.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
 
+module shark:Application.impl;
+
+import std;
+
+import :Application;
+import :Layer;
+import :Window;
+import :renderer.backends.IRenderDevice;
+
+namespace shark {
+
+#ifdef __EMSCRIPTEN__
 static void emscriptenLoop(void* arg) {
     Application* app = static_cast<Application*>(arg);
     app->runStep();
@@ -113,3 +123,5 @@ void Application::updateTime(float now) {
     elapsedTime += deltaTime;
     lastFrameTime = now;
 }
+
+} // namespace shark

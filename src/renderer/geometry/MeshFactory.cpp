@@ -1,64 +1,71 @@
-#include "renderer/geometry/MeshFactory.hpp"
+module shark:renderer.geometry.MeshFactory.impl;
 
-#include <array>
-#include <cmath>
-#include <numbers>
+import std;
 
-#include "renderer/geometry/Vertex.hpp"
+import :renderer.geometry.Mesh;
+import :renderer.geometry.MeshFactory;
+import :renderer.geometry.Vertex;
+import :util.Vector;
+
+namespace shark {
+
+namespace {
+
+constexpr std::array<std::array<Vector3, 4>, 6> CUBE_FACE_OFFSETS = {
+    // Front
+    std::array<Vector3, 4>{
+        Vector3{.x = -1.0f, .y = -1.0f, .z = 1.0f},
+        Vector3{.x = 1.0f, .y = -1.0f, .z = 1.0f},
+        Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f},
+        Vector3{.x = -1.0f, .y = 1.0f, .z = 1.0f},
+    },
+    // Back
+    std::array<Vector3, 4>{
+        Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f},
+        Vector3{.x = -1.0f, .y = 1.0f, .z = -1.0f},
+        Vector3{.x = 1.0f, .y = 1.0f, .z = -1.0f},
+        Vector3{.x = 1.0f, .y = -1.0f, .z = -1.0f},
+    },
+    // Top
+    std::array<Vector3, 4>{
+        Vector3{.x = -1.0f, .y = 1.0f, .z = -1.0f},
+        Vector3{.x = -1.0f, .y = 1.0f, .z = 1.0f},
+        Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f},
+        Vector3{.x = 1.0f, .y = 1.0f, .z = -1.0f},
+    },
+    // Bottom
+    std::array<Vector3, 4>{
+        Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f},
+        Vector3{.x = 1.0f, .y = -1.0f, .z = -1.0f},
+        Vector3{.x = 1.0f, .y = -1.0f, .z = 1.0f},
+        Vector3{.x = -1.0f, .y = -1.0f, .z = 1.0f},
+    },
+    // Right
+    std::array<Vector3, 4>{
+        Vector3{.x = 1.0f, .y = -1.0f, .z = -1.0f},
+        Vector3{.x = 1.0f, .y = 1.0f, .z = -1.0f},
+        Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f},
+        Vector3{.x = 1.0f, .y = -1.0f, .z = 1.0f},
+    },
+    // Left
+    std::array<Vector3, 4>{
+        Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f},
+        Vector3{.x = -1.0f, .y = -1.0f, .z = 1.0f},
+        Vector3{.x = -1.0f, .y = 1.0f, .z = 1.0f},
+        Vector3{.x = -1.0f, .y = 1.0f, .z = -1.0f},
+    },
+};
+
+constexpr std::array<Vector3, 6> CUBE_FACE_NORMALS = {
+    Vector3{.x = 0.0f, .y = 0.0f, .z = 1.0f}, Vector3{.x = 0.0f, .y = 0.0f, .z = -1.0f},
+    Vector3{.x = 0.0f, .y = 1.0f, .z = 0.0f}, Vector3{.x = 0.0f, .y = -1.0f, .z = 0.0f},
+    Vector3{.x = 1.0f, .y = 0.0f, .z = 0.0f}, Vector3{.x = -1.0f, .y = 0.0f, .z = 0.0f},
+};
+
+} // namespace
 
 Mesh::MeshData MeshFactory::createCubeMesh() {
     Mesh::MeshData mesh;
-
-    static constexpr std::array<std::array<Vector3, 4>, 6> positions = {
-        // Front
-        std::array<Vector3, 4>{
-            Vector3{.x = -1.0f, .y = -1.0f, .z = 1.0f},
-            Vector3{.x = 1.0f, .y = -1.0f, .z = 1.0f},
-            Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f},
-            Vector3{.x = -1.0f, .y = 1.0f, .z = 1.0f},
-        },
-        // Back
-        std::array<Vector3, 4>{
-            Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f},
-            Vector3{.x = -1.0f, .y = 1.0f, .z = -1.0f},
-            Vector3{.x = 1.0f, .y = 1.0f, .z = -1.0f},
-            Vector3{.x = 1.0f, .y = -1.0f, .z = -1.0f},
-        },
-        // Top
-        std::array<Vector3, 4>{
-            Vector3{.x = -1.0f, .y = 1.0f, .z = -1.0f},
-            Vector3{.x = -1.0f, .y = 1.0f, .z = 1.0f},
-            Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f},
-            Vector3{.x = 1.0f, .y = 1.0f, .z = -1.0f},
-        },
-        // Bottom
-        std::array<Vector3, 4>{
-            Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f},
-            Vector3{.x = 1.0f, .y = -1.0f, .z = -1.0f},
-            Vector3{.x = 1.0f, .y = -1.0f, .z = 1.0f},
-            Vector3{.x = -1.0f, .y = -1.0f, .z = 1.0f},
-        },
-        // Right
-        std::array<Vector3, 4>{
-            Vector3{.x = 1.0f, .y = -1.0f, .z = -1.0f},
-            Vector3{.x = 1.0f, .y = 1.0f, .z = -1.0f},
-            Vector3{.x = 1.0f, .y = 1.0f, .z = 1.0f},
-            Vector3{.x = 1.0f, .y = -1.0f, .z = 1.0f},
-        },
-        // Left
-        std::array<Vector3, 4>{
-            Vector3{.x = -1.0f, .y = -1.0f, .z = -1.0f},
-            Vector3{.x = -1.0f, .y = -1.0f, .z = 1.0f},
-            Vector3{.x = -1.0f, .y = 1.0f, .z = 1.0f},
-            Vector3{.x = -1.0f, .y = 1.0f, .z = -1.0f},
-        },
-    };
-
-    static constexpr std::array<Vector3, 6> normals = {
-        Vector3{.x = 0.0f, .y = 0.0f, .z = 1.0f}, Vector3{.x = 0.0f, .y = 0.0f, .z = -1.0f},
-        Vector3{.x = 0.0f, .y = 1.0f, .z = 0.0f}, Vector3{.x = 0.0f, .y = -1.0f, .z = 0.0f},
-        Vector3{.x = 1.0f, .y = 0.0f, .z = 0.0f}, Vector3{.x = -1.0f, .y = 0.0f, .z = 0.0f},
-    };
 
     static constexpr std::array<Vector2, 4> uvs = {
         Vector2{.x = 0.0f, .y = 0.0f},
@@ -73,13 +80,12 @@ Mesh::MeshData MeshFactory::createCubeMesh() {
         Vector3{.x = 1.0f, .y = 0.2f, .z = 1.0f}, Vector3{.x = 0.2f, .y = 1.0f, .z = 1.0f},
     };
 
-    // Build vertices
-    for (std::size_t face = 0; face < positions.size(); ++face) {
-        for (std::size_t i = 0; i < positions.at(face).size(); ++i) {
+    for (std::size_t face = 0; face < CUBE_FACE_OFFSETS.size(); ++face) {
+        for (std::size_t i = 0; i < CUBE_FACE_OFFSETS.at(face).size(); ++i) {
             mesh.vertices.push_back(
                 Vertex{
-                    .position = positions.at(face).at(i),
-                    .normal   = normals.at(face),
+                    .position = CUBE_FACE_OFFSETS.at(face).at(i),
+                    .normal   = CUBE_FACE_NORMALS.at(face),
                     .uv       = uvs.at(i),
                     .color    = colors.at(face),
                 }
@@ -87,7 +93,6 @@ Mesh::MeshData MeshFactory::createCubeMesh() {
         }
     }
 
-    // Triangles
     for (int face = 0; face < 6; face++) {
         int base = face * 4;
         mesh.triangles.insert(mesh.triangles.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
@@ -151,31 +156,12 @@ Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickn
     float          ht    = thickness * 0.5f;
 
     auto addCuboid = [&](Vector3 center, Vector3 extents, Vector3 barColor) {
-        static constexpr std::array<Vector3, 6> faceNormals = {
-            Vector3{0.0f, 0.0f, 1.0f},  Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.0f, 1.0f, 0.0f},
-            Vector3{0.0f, -1.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f},  Vector3{-1.0f, 0.0f, 0.0f},
-        };
-
-        static constexpr std::array<std::array<Vector3, 4>, 6> faceOffsets = {
-            std::array<Vector3, 4>{Vector3{-1, -1, 1}, Vector3{1, -1, 1}, Vector3{1, 1, 1}, Vector3{-1, 1, 1}},
-            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{-1, 1, -1}, Vector3{1, 1, -1}, Vector3{1, -1, -1}},
-            std::array<Vector3, 4>{Vector3{-1, 1, -1}, Vector3{-1, 1, 1}, Vector3{1, 1, 1}, Vector3{1, 1, -1}},
-            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{1, -1, -1}, Vector3{1, -1, 1}, Vector3{-1, -1, 1}},
-            std::array<Vector3, 4>{Vector3{1, -1, -1}, Vector3{1, 1, -1}, Vector3{1, 1, 1}, Vector3{1, -1, 1}},
-            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{-1, -1, 1}, Vector3{-1, 1, 1}, Vector3{-1, 1, -1}},
-        };
-
-        for (std::size_t f = 0; f < 6; ++f) {
+        for (std::size_t f = 0; f < CUBE_FACE_OFFSETS.size(); ++f) {
             auto faceBase = static_cast<int>(mesh.vertices.size());
-            for (std::size_t v = 0; v < 4; ++v) {
-                Vector3 p = center
-                            + Vector3{
-                                faceOffsets[f][v].x * extents.x,
-                                faceOffsets[f][v].y * extents.y,
-                                faceOffsets[f][v].z * extents.z,
-                            };
+            for (std::size_t v = 0; v < CUBE_FACE_OFFSETS[f].size(); ++v) {
+                Vector3 p = center + (CUBE_FACE_OFFSETS[f][v] * extents);
                 mesh.vertices.push_back(
-                    Vertex{.position = p, .normal = faceNormals[f], .uv = Vector2{0.0f, 0.0f}, .color = barColor}
+                    Vertex{.position = p, .normal = CUBE_FACE_NORMALS[f], .uv = Vector2{0.0f, 0.0f}, .color = barColor}
                 );
             }
             mesh.triangles.push_back(faceBase + 0);
@@ -207,3 +193,5 @@ Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickn
 
     return mesh;
 }
+
+} // namespace shark

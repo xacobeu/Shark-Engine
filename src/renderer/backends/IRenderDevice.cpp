@@ -1,8 +1,12 @@
-#include "renderer/backends/IRenderDevice.hpp"
+module shark:renderer.backends.IRenderDevice.impl;
 
-#include <stdexcept>
+import std;
 
-#include "renderer/backends/opengl/RenderDevice.hpp"
+import :renderer.backends.IRenderDevice;
+
+import :renderer.backends.opengl.RenderDevice;
+
+namespace shark {
 
 std::unique_ptr<IRenderDevice> IRenderDevice::create(GraphicsAPI api) {
     if (api == GraphicsAPI::OpenGL) {
@@ -10,3 +14,5 @@ std::unique_ptr<IRenderDevice> IRenderDevice::create(GraphicsAPI api) {
     }
     throw std::runtime_error("Unsupported Graphics API!");
 }
+
+} // namespace shark

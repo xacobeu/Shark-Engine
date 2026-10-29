@@ -1,22 +1,28 @@
-#include "renderer/backends/opengl/RenderDevice.hpp"
+module;
 
-#include <bit>
-#include <cstddef>
-#include <cstdint>
+#include "GLHeader.hpp"
 
-#include "renderer/backends/opengl/IndexBuffer.hpp"
-#include "renderer/backends/opengl/Shader.hpp"
-#include "renderer/backends/opengl/Texture.hpp"
-#include "renderer/backends/opengl/VertexBuffer.hpp"
-
-#ifdef SHARK_NO_GLAD
-#include <GLES3/gl3.h>
-#else
-#include <glad/glad.h>
-#endif
 #include <GLFW/glfw3.h>
 
-namespace GL {
+module shark:renderer.backends.opengl.RenderDevice.impl;
+
+import std;
+
+import :renderer.backends.IIndexBuffer;
+import :renderer.backends.IInstanceBuffer;
+import :renderer.backends.IShader;
+import :renderer.backends.ITexture;
+import :renderer.backends.IVertexBuffer;
+import :renderer.backends.opengl.InstanceBuffer;
+
+import :renderer.backends.opengl.RenderDevice;
+import :renderer.backends.opengl.IndexBuffer;
+import :renderer.backends.opengl.Object;
+import :renderer.backends.opengl.Shader;
+import :renderer.backends.opengl.Texture;
+import :renderer.backends.opengl.VertexBuffer;
+
+namespace shark::GL {
 
 std::shared_ptr<IVertexBuffer> RenderDevice::createVertexBuffer(const void* data, std::size_t size) {
     return std::make_shared<GL::VertexBuffer>(data, size);
@@ -52,12 +58,6 @@ void RenderDevice::begin(float r, float g, float b, float a) {
 void RenderDevice::setViewport(int x, int y, int width, int height) {
     glViewport(x, y, width, height);
 }
-
-namespace {
-[[nodiscard]] auto bufferOffset(std::size_t offset) noexcept -> const void* {
-    return std::bit_cast<const void*>(static_cast<std::uintptr_t>(offset));
-}
-} // namespace
 
 void RenderDevice::drawIndexed(unsigned int indexCount) {
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, nullptr);
@@ -130,4 +130,4 @@ void RenderDevice::setVSync(bool enabled) {
 #endif
 }
 
-} // namespace GL
+} // namespace shark::GL

@@ -1,10 +1,12 @@
-#include "SpinningCubeExample.hpp"
+module examples:spinning_cube.SpinningCubeExample.impl;
 
-#include <cmath>
-#include <memory>
+import std;
 
-#include "Application.hpp"
-#include "renderer/geometry/MeshFactory.hpp"
+import :spinning_cube.SpinningCubeExample;
+
+import shark;
+
+using namespace shark;
 
 void SpinningCubeExample::onAttach() {
     getApp()->setScene(&scene);

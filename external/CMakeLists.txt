@@ -41,7 +41,6 @@ endif()
 # 4. ImGui
 add_library(imgui STATIC
     imgui/imgui.cpp
-    imgui/imgui_demo.cpp
     imgui/imgui_draw.cpp
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
@@ -60,8 +59,16 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 add_library(imgui::imgui ALIAS imgui)
 
 # 5. stb
-add_library(stb INTERFACE)
-target_include_directories(stb SYSTEM INTERFACE
+add_library(stb STATIC
+    stb_image.c
+)
+target_include_directories(stb SYSTEM PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/stb
+)
+target_compile_options(stb PRIVATE
+    $<$<NOT:$<C_COMPILER_ID:MSVC>>:-w>
+    $<$<C_COMPILER_ID:MSVC>:/W0>
+    $<$<AND:$<NOT:$<BOOL:${EMSCRIPTEN}>>,$<CONFIG:Release,RelWithDebInfo>>:-march=native>
+    $<$<BOOL:${EMSCRIPTEN}>:-msimd128>
 )
 
