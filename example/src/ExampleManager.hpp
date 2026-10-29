@@ -11,13 +11,18 @@ enum class ExampleType : std::uint8_t {
     MolecularDynamics,
     SpinningCube,
     RayTracing,
-    Count
+    Count,
 };
 
 class ExampleManager : public Layer {
 public:
     ExampleManager();
     ~ExampleManager() override;
+
+    ExampleManager(const ExampleManager&)            = delete;
+    ExampleManager& operator=(const ExampleManager&) = delete;
+    ExampleManager(ExampleManager&&)                 = delete;
+    ExampleManager& operator=(ExampleManager&&)      = delete;
 
     void onAttach() override;
     void onDetach() override;
@@ -31,10 +36,10 @@ public:
     [[nodiscard]] static std::string_view getExampleName(ExampleType type) noexcept;
 
 private:
-    void                   renderTopBar();
-    void                   processHotkeys();
-    void                   applyPendingSwitch();
-    std::unique_ptr<Layer> createExample(ExampleType type);
+    void                          renderTopBar();
+    void                          processHotkeys();
+    void                          applyPendingSwitch();
+    static std::unique_ptr<Layer> createExample(ExampleType type);
 
     ExampleType currentType = ExampleType::FastMultipoleMethod;
     ExampleType pendingType = ExampleType::FastMultipoleMethod;

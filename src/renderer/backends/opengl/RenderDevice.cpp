@@ -39,6 +39,10 @@ std::shared_ptr<ITexture> RenderDevice::createTexture(const std::string& filepat
     return std::make_shared<GL::Texture>(filepath);
 }
 
+std::shared_ptr<IInstanceBuffer> RenderDevice::createInstanceBuffer() {
+    return std::make_shared<GL::InstanceBuffer>();
+}
+
 void RenderDevice::begin(float r, float g, float b, float a) {
     glClearColor(r, g, b, a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -70,9 +74,19 @@ void RenderDevice::drawIndexedInstanced(
         return;
     }
 
-    instanceVbo.create();
-    instanceVbo.bind();
-    instanceVbo.data(static_cast<GLsizeiptr>(instanceDataSize), instanceData, GL_DYNAMIC_DRAW);
+    scratchInstances.setData(instanceData, instanceDataSize);
+    drawIndexedInstanced(indexCount, instanceCount, scratchInstances);
+}
+
+void RenderDevice::drawIndexedInstanced(
+    unsigned int indexCount, unsigned int instanceCount, IInstanceBuffer& instances
+) {
+    if (instanceCount == 0) {
+        return;
+    }
+
+    const auto& buffer = dynamic_cast<const GL::InstanceBuffer&>(instances);
+    buffer.bind();
 
     constexpr auto stride = static_cast<GLsizei>(sizeof(float) * 20); // 4x4 matrix (16 floats) + vec4 color (4 floats)
 
@@ -101,7 +115,7 @@ void RenderDevice::drawIndexedInstanced(
     glVertexAttribDivisor(8, 0);
     glDisableVertexAttribArray(8);
 
-    instanceVbo.unbind();
+    buffer.unbind();
 }
 
 void RenderDevice::drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) {

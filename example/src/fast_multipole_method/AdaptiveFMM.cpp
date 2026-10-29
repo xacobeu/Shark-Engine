@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <functional>
 #include <numbers>
@@ -15,7 +16,7 @@ namespace {
 // Lane masks for the final partial SIMD block of a row:
 // load8(&TAIL_MASK[8 - n]) yields n leading 1.0f lanes followed by (8 - n) 0.0f lanes.
 alignas(32) constexpr std::array<float, 16> TAIL_MASK = {
-    1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
 };
 
 struct P2PSoAView {
@@ -115,7 +116,7 @@ std::uint32_t AdaptiveFMM::allocateChildren(const Vector3& parentCenter, float p
         const Vector3 childCenter = {
             parentCenter.x + (((i & 1) != 0) ? quarterWidth : -quarterWidth),
             parentCenter.y + (((i & 2) != 0) ? quarterWidth : -quarterWidth),
-            parentCenter.z + (((i & 4) != 0) ? quarterWidth : -quarterWidth)
+            parentCenter.z + (((i & 4) != 0) ? quarterWidth : -quarterWidth),
         };
         nodePool[firstChild + i].reset(childCenter, quarterWidth, childDepth);
     }
@@ -504,7 +505,7 @@ void AdaptiveFMM::applyM2L(FMMNode& target, const FMMNode& source, const Vector3
         (-d2 * rz) + (d3 * ryy * rz),        // 6: yyz
         (-d2 * rx) + (d3 * rzz * rx),        // 7: zzx
         (-d2 * ry) + (d3 * rzz * ry),        // 8: zzy
-        d3 * rx * ry * rz                    // 9: xyz
+        d3 * rx * ry * rz,                   // 9: xyz
     };
 
     const float mB  = source.M.mass;
@@ -541,8 +542,9 @@ void AdaptiveFMM::applyM2L(FMMNode& target, const FMMNode& source, const Vector3
 }
 
 void AdaptiveFMM::directP2P(const FMMNode& target, const FMMNode& source) noexcept {
-    const P2PSoAView          soa{soaPosX.data(), soaPosY.data(), soaPosZ.data(), soaMass.data(),
-                                  soaAccX.data(), soaAccY.data(), soaAccZ.data()};
+    const P2PSoAView soa{
+        soaPosX.data(), soaPosY.data(), soaPosZ.data(), soaMass.data(), soaAccX.data(), soaAccY.data(), soaAccZ.data(),
+    };
     const shark::simd::float8 eps2_8(eps2);
 
     for (std::uint32_t i = target.begin; i < target.end; ++i) {

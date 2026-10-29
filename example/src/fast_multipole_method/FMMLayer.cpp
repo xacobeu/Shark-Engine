@@ -8,6 +8,7 @@
 #include <numbers>
 #include <random>
 #include <span>
+#include <utility>
 
 #include "imgui.h"
 
@@ -46,7 +47,6 @@ void FMMLayer::onAttach() {
 
 void FMMLayer::onDetach() {
     particles.clear();
-    instanceData.clear();
     particleGroup = nullptr;
 }
 
@@ -54,6 +54,7 @@ void FMMLayer::resetSimulation(std::size_t count) {
     currentParticleCount = count;
     uiParticleCount      = static_cast<int>(count);
 
+    auto& instanceData = particleGroup->getInstancesMutable();
     particles.resize(currentParticleCount);
     instanceData.resize(currentParticleCount);
 
@@ -66,10 +67,6 @@ void FMMLayer::resetSimulation(std::size_t count) {
     colorMaxSpeed = measureColorMaxSpeed();
     for (std::size_t i = 0; i < currentParticleCount; ++i) {
         instanceData[i].color = magma(particles[i].velocity.length() / colorMaxSpeed);
-    }
-
-    if (particleGroup != nullptr) {
-        particleGroup->setInstances(instanceData);
     }
 
     solve();
@@ -117,17 +114,16 @@ void FMMLayer::onUpdate(float deltaTime) {
     const float smoothing = 1.0f - std::exp(-dt / COLOR_RANGE_SMOOTHING_SECONDS);
     colorMaxSpeed += (measureColorMaxSpeed() - colorMaxSpeed) * smoothing;
 
-    const float maxSpeed = colorMaxSpeed;
-    shark::exec::for_each_index(shark::exec::par_unseq, particles.size(), [this, dt, maxSpeed](std::size_t i) {
-        auto& p = particles[i];
-        p.integrate(dt);
-        instanceData[i].modelMatrix = Matrix4::translateScale(p.position, PARTICLE_RADIUS);
-        instanceData[i].color       = magma(p.velocity.length() / maxSpeed);
-    });
-
-    if (particleGroup != nullptr) {
-        particleGroup->setInstances(instanceData);
-    }
+    const float maxSpeed     = colorMaxSpeed;
+    auto&       instanceData = particleGroup->getInstancesMutable();
+    shark::exec::for_each_index(
+        shark::exec::par_unseq, particles.size(), [this, dt, maxSpeed, &instanceData](std::size_t i) {
+            auto& p = particles[i];
+            p.integrate(dt);
+            instanceData[i].modelMatrix = Matrix4::translateScale(p.position, PARTICLE_RADIUS);
+            instanceData[i].color       = magma(p.velocity.length() / maxSpeed);
+        }
+    );
 }
 
 void FMMLayer::renderImGui() {
@@ -136,7 +132,7 @@ void FMMLayer::renderImGui() {
     ImGui::Begin("Controls");
 
     ImGui::SliderInt("Particles", &uiParticleCount, 500, 100000);
-    if (ImGui::IsItemDeactivatedAfterEdit() && uiParticleCount != static_cast<int>(currentParticleCount)) {
+    if (ImGui::IsItemDeactivatedAfterEdit() && std::cmp_not_equal(uiParticleCount, currentParticleCount)) {
         resetSimulation(static_cast<std::size_t>(uiParticleCount));
     }
 

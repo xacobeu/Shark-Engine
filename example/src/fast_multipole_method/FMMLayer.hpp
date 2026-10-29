@@ -6,7 +6,6 @@
 
 #include "AdaptiveFMM.hpp"
 #include "Particle.hpp"
-#include "SharkEngine.hpp"
 
 class FMMLayer : public Layer {
 public:
@@ -62,7 +61,6 @@ private:
     InstancedEntity* particleGroup = nullptr;
 
     std::vector<fmm::Particle> particles;
-    std::vector<InstanceData>  instanceData;
 
     AdaptiveFMM         fmm;
     AdaptiveFMM::Config fmmConfig;

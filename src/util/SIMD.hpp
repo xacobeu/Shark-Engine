@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <memory>
@@ -21,7 +20,7 @@
 
 namespace shark::simd {
 
-#if defined(__cpp_lib_simd)
+#ifdef __cpp_lib_simd
 
 using float4  = std::fixed_size_simd<float, 4>;
 using float8  = std::fixed_size_simd<float, 8>;
@@ -181,7 +180,7 @@ inline void transpose4x4(float4& c0, float4& c1, float4& c2, float4& c3) noexcep
     c3[3]           = r3[3];
 }
 
-#elif defined(__cpp_lib_experimental_parallel_simd)
+#elifdef __cpp_lib_experimental_parallel_simd
 
 namespace stdx = std::experimental;
 
@@ -395,7 +394,7 @@ struct alignas(16) float4 {
     }
 };
 
-[[nodiscard]] constexpr inline float4 operator*(float s, const float4& r) noexcept {
+[[nodiscard]] constexpr float4 operator*(float s, const float4& r) noexcept {
     return r * s;
 }
 
@@ -449,7 +448,7 @@ struct alignas(32) float8 {
     }
 };
 
-[[nodiscard]] constexpr inline float8 operator*(float s, const float8& r) noexcept {
+[[nodiscard]] constexpr float8 operator*(float s, const float8& r) noexcept {
     return r * s;
 }
 
@@ -485,8 +484,8 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
     std::memcpy(ptr, &val.v, sizeof(float) * 8);
 }
 
-[[nodiscard]] constexpr inline float4 zero_w(const float4& a) noexcept {
-#if defined(__clang__)
+[[nodiscard]] constexpr float4 zero_w(const float4& a) noexcept {
+#ifdef __clang__
     constexpr float4::vec4_t zero{0.0f, 0.0f, 0.0f, 0.0f};
     return float4(__builtin_shufflevector(a.v, zero, 0, 1, 2, 7));
 #else
@@ -494,17 +493,17 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 #endif
 }
 
-[[nodiscard]] constexpr inline float reduce_add(const float4& a) noexcept {
+[[nodiscard]] constexpr float reduce_add(const float4& a) noexcept {
     return (a.v[0] + a.v[1]) + (a.v[2] + a.v[3]);
 }
 
-[[nodiscard]] constexpr inline float reduce_add(const float8& a) noexcept {
+[[nodiscard]] constexpr float reduce_add(const float8& a) noexcept {
     return ((a.v[0] + a.v[1]) + (a.v[2] + a.v[3])) + ((a.v[4] + a.v[5]) + (a.v[6] + a.v[7]));
 }
 
 // {sum(a), sum(b), sum(c)} with the shuffle/add work shared through a partial 4x4 transpose.
 [[nodiscard]] inline std::array<float, 3> reduce_add3(const float8& a, const float8& b, const float8& c) noexcept {
-#if defined(__clang__)
+#ifdef __clang__
     using vec4_t = float4::vec4_t;
     // 8 -> 4 lanes: fold upper half onto lower half
     const vec4_t     a4 = __builtin_shufflevector(a.v, a.v, 0, 1, 2, 3) + __builtin_shufflevector(a.v, a.v, 4, 5, 6, 7);
@@ -525,7 +524,7 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 [[nodiscard]] inline float4 sqrt(const float4& a) noexcept {
-#if defined(__clang__)
+#ifdef __clang__
     return float4(__builtin_elementwise_sqrt(a.v));
 #else
     return float4(std::sqrt(a[0]), std::sqrt(a[1]), std::sqrt(a[2]), std::sqrt(a[3]));
@@ -533,7 +532,7 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 [[nodiscard]] inline float8 sqrt(const float8& a) noexcept {
-#if defined(__clang__)
+#ifdef __clang__
     return float8(__builtin_elementwise_sqrt(a.v));
 #else
     return float8(
@@ -543,12 +542,13 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 #endif
 }
 
+// NOLINTBEGIN(portability-simd-intrinsics): approximate rsqrt and FMA have no portable spelling
 [[nodiscard]] inline float4 rsqrt(const float4& a) noexcept {
-#if defined(__FMA__)
+#ifdef __FMA__
     const float4 y0(_mm_rsqrt_ps(a.v));
     const float4 half_a_y0 = float4(0.5f) * a * y0;
     return y0 * float4(_mm_fnmadd_ps(half_a_y0.v, y0.v, _mm_set1_ps(1.5f)));
-#elif defined(__SSE__)
+#elifdef __SSE__
     const float4 y0(_mm_rsqrt_ps(a.v));
     return y0 * (float4(1.5f) - (float4(0.5f) * a * y0 * y0));
 #else
@@ -557,11 +557,11 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 [[nodiscard]] inline float8 rsqrt(const float8& a) noexcept {
-#if defined(__FMA__)
+#ifdef __FMA__
     const float8 y0(_mm256_rsqrt_ps(a.v));
     const float8 half_a_y0 = float8(0.5f) * a * y0;
     return y0 * float8(_mm256_fnmadd_ps(half_a_y0.v, y0.v, _mm256_set1_ps(1.5f)));
-#elif defined(__AVX__)
+#elifdef __AVX__
     const float8 y0(_mm256_rsqrt_ps(a.v));
     return y0 * (float8(1.5f) - (float8(0.5f) * a * y0 * y0));
 #else
@@ -569,70 +569,39 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 #endif
 }
 
+// Without a hardware FMA the builtin lowers to scalar fmaf calls, so fall back to mul + add.
 [[nodiscard]] inline float4 fma(const float4& a, const float4& b, const float4& c) noexcept {
-#if defined(__FMA__)
+#ifdef __FMA__
     return float4(_mm_fmadd_ps(a.v, b.v, c.v));
-#elif defined(__clang__)
-    return float4(__builtin_elementwise_fma(a.v, b.v, c.v));
 #else
     return (a * b) + c;
 #endif
 }
 
 [[nodiscard]] inline float8 fma(const float8& a, const float8& b, const float8& c) noexcept {
-#if defined(__FMA__)
+#ifdef __FMA__
     return float8(_mm256_fmadd_ps(a.v, b.v, c.v));
-#elif defined(__clang__)
-    return float8(__builtin_elementwise_fma(a.v, b.v, c.v));
 #else
     return (a * b) + c;
 #endif
 }
+// NOLINTEND(portability-simd-intrinsics)
 
+// Same semantics as minps/maxps; compiles to them on x86 and to f32x4.pmin/pmax on wasm.
 [[nodiscard]] inline float4 min(const float4& a, const float4& b) noexcept {
-#if defined(__SSE__)
-    return float4(_mm_min_ps(a.v, b.v));
-#elif defined(__clang__)
-    return float4(__builtin_elementwise_min(a.v, b.v));
-#else
-    return float4(std::min(a[0], b[0]), std::min(a[1], b[1]), std::min(a[2], b[2]), std::min(a[3], b[3]));
-#endif
+    return float4(a.v < b.v ? a.v : b.v);
 }
 
 [[nodiscard]] inline float8 min(const float8& a, const float8& b) noexcept {
-#if defined(__AVX__)
-    return float8(_mm256_min_ps(a.v, b.v));
-#elif defined(__clang__)
-    return float8(__builtin_elementwise_min(a.v, b.v));
-#else
-    return float8(
-        std::min(a[0], b[0]), std::min(a[1], b[1]), std::min(a[2], b[2]), std::min(a[3], b[3]), std::min(a[4], b[4]),
-        std::min(a[5], b[5]), std::min(a[6], b[6]), std::min(a[7], b[7])
-    );
-#endif
+    return float8(a.v < b.v ? a.v : b.v);
 }
 
 [[nodiscard]] inline float4 max(const float4& a, const float4& b) noexcept {
-#if defined(__SSE__)
-    return float4(_mm_max_ps(a.v, b.v));
-#elif defined(__clang__)
-    return float4(__builtin_elementwise_max(a.v, b.v));
-#else
-    return float4(std::max(a[0], b[0]), std::max(a[1], b[1]), std::max(a[2], b[2]), std::max(a[3], b[3]));
-#endif
+    return float4(a.v > b.v ? a.v : b.v);
 }
 
 [[nodiscard]] inline float8 max(const float8& a, const float8& b) noexcept {
-#if defined(__AVX__)
-    return float8(_mm256_max_ps(a.v, b.v));
-#elif defined(__clang__)
-    return float8(__builtin_elementwise_max(a.v, b.v));
-#else
-    return float8(
-        std::max(a[0], b[0]), std::max(a[1], b[1]), std::max(a[2], b[2]), std::max(a[3], b[3]), std::max(a[4], b[4]),
-        std::max(a[5], b[5]), std::max(a[6], b[6]), std::max(a[7], b[7])
-    );
-#endif
+    return float8(a.v > b.v ? a.v : b.v);
 }
 
 [[nodiscard]] inline float4 clamp(const float4& v, const float4& lo, const float4& hi) noexcept {
@@ -644,7 +613,7 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 [[nodiscard]] inline float4 abs(const float4& a) noexcept {
-#if defined(__clang__)
+#ifdef __clang__
     return float4(__builtin_elementwise_abs(a.v));
 #else
     return float4(std::abs(a[0]), std::abs(a[1]), std::abs(a[2]), std::abs(a[3]));
@@ -652,37 +621,33 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 [[nodiscard]] inline float8 abs(const float8& a) noexcept {
-#if defined(__clang__)
+#ifdef __clang__
     return float8(__builtin_elementwise_abs(a.v));
 #else
-    return float8(
-        std::abs(a[0]), std::abs(a[1]), std::abs(a[2]), std::abs(a[3]), std::abs(a[4]), std::abs(a[5]), std::abs(a[6]),
-        std::abs(a[7])
-    );
+    return {std::abs(a[0]), std::abs(a[1]), std::abs(a[2]), std::abs(a[3]),
+            std::abs(a[4]), std::abs(a[5]), std::abs(a[6]), std::abs(a[7])};
 #endif
 }
 
 [[nodiscard]] inline float reduce_max(const float4& a) noexcept {
-    return std::max(std::max(a[0], a[1]), std::max(a[2], a[3]));
+    return std::max({a[0], a[1], a[2], a[3]});
 }
 
 [[nodiscard]] inline float reduce_max(const float8& a) noexcept {
-    return std::max(
-        std::max(std::max(a[0], a[1]), std::max(a[2], a[3])), std::max(std::max(a[4], a[5]), std::max(a[6], a[7]))
-    );
+    return std::max({a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]});
 }
 
-[[nodiscard]] constexpr inline float dot3(const float4& a, const float4& b) noexcept {
+[[nodiscard]] constexpr float dot3(const float4& a, const float4& b) noexcept {
     const float4 prod = a * b;
     return (prod.v[0] + prod.v[1]) + prod.v[2];
 }
 
-[[nodiscard]] constexpr inline float dot4(const float4& a, const float4& b) noexcept {
+[[nodiscard]] constexpr float dot4(const float4& a, const float4& b) noexcept {
     return reduce_add(a * b);
 }
 
-[[nodiscard]] constexpr inline float4 cross3(const float4& a, const float4& b) noexcept {
-#if defined(__clang__)
+[[nodiscard]] constexpr float4 cross3(const float4& a, const float4& b) noexcept {
+#ifdef __clang__
     const float4::vec4_t a_yzx = __builtin_shufflevector(a.v, a.v, 1, 2, 0, 3);
     const float4::vec4_t b_zxy = __builtin_shufflevector(b.v, b.v, 2, 0, 1, 3);
     const float4::vec4_t a_zxy = __builtin_shufflevector(a.v, a.v, 2, 0, 1, 3);
@@ -697,7 +662,7 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 inline void transpose4x4(float4& c0, float4& c1, float4& c2, float4& c3) noexcept {
-#if defined(__clang__)
+#ifdef __clang__
     const float4::vec4_t t0 = __builtin_shufflevector(c0.v, c1.v, 0, 4, 1, 5);
     const float4::vec4_t t1 = __builtin_shufflevector(c0.v, c1.v, 2, 6, 3, 7);
     const float4::vec4_t t2 = __builtin_shufflevector(c2.v, c3.v, 0, 4, 1, 5);
@@ -707,7 +672,7 @@ inline void transpose4x4(float4& c0, float4& c1, float4& c2, float4& c3) noexcep
     c1 = float4(__builtin_shufflevector(t0, t2, 2, 3, 6, 7));
     c2 = float4(__builtin_shufflevector(t1, t3, 0, 1, 4, 5));
     c3 = float4(__builtin_shufflevector(t1, t3, 2, 3, 6, 7));
-#elif defined(__SSE__)
+#elifdef __SSE__
     _MM_TRANSPOSE4_PS(c0.v, c1.v, c2.v, c3.v);
 #else
     const float4 r0 = c0;

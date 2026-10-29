@@ -4,6 +4,7 @@
 #include <cmath>
 #include <random>
 #include <span>
+#include <utility>
 
 #include "imgui.h"
 
@@ -198,9 +199,10 @@ void RayTracingExample::onRender(Renderer&) {
     int count = std::clamp(sphereCount, 1, static_cast<int>(spheres.size()));
     raytraceShader->setInt("u_SphereCount", count);
 
-    std::array<float, MAX_SPHERES * 4> posRadData{};
-    std::array<float, MAX_SPHERES * 4> colShinyData{};
-    for (std::size_t i = 0; i < static_cast<std::size_t>(count); ++i) {
+    constexpr auto                      SPHERE_DATA_SIZE = static_cast<std::size_t>(MAX_SPHERES) * 4;
+    std::array<float, SPHERE_DATA_SIZE> posRadData{};
+    std::array<float, SPHERE_DATA_SIZE> colShinyData{};
+    for (std::size_t i = 0; std::cmp_less(i, count); ++i) {
         const std::size_t base = i * 4;
         posRadData[base + 0]   = spheres[i].currentPos.x;
         posRadData[base + 1]   = spheres[i].currentPos.y;

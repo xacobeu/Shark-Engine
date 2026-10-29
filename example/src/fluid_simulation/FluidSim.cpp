@@ -45,6 +45,7 @@ void FluidSim::resetBox() {
 void FluidSim::resetSimulation() {
     resetBox();
 
+    auto& instanceData = particleGroup->getInstancesMutable();
     particles.resize(static_cast<std::size_t>(currentParticleCount));
     instanceData.resize(static_cast<std::size_t>(currentParticleCount));
 
@@ -109,10 +110,6 @@ void FluidSim::resetSimulation() {
             instanceData[i].color       = {0.1f, 0.35f, 0.90f, 1.0f};
         }
     }
-
-    if (particleGroup != nullptr) {
-        particleGroup->setInstances(instanceData);
-    }
 }
 
 void FluidSim::onAttach() {
@@ -141,7 +138,6 @@ void FluidSim::onDetach() {
         getApp()->setScene(nullptr);
     }
     particles.clear();
-    instanceData.clear();
     particleGroup  = nullptr;
     boxFrameEntity = nullptr;
     camera         = nullptr;
@@ -275,15 +271,14 @@ void FluidSim::onUpdate(float deltaTime) {
         boxFrameEntity->setPosition({0.0f, 0.0f, 0.0f})->setRotation(boxRot);
     }
 
-    shark::exec::for_each_index(shark::exec::par_unseq, particles.size(), [this, &rotMat](std::size_t i) {
-        Vector3 worldPos            = rotMat.transformVector(particles[i].position);
-        instanceData[i].modelMatrix = Matrix4::translate(worldPos);
-        instanceData[i].color       = speedToColor(particles[i].velocity.length());
-    });
-
-    if (particleGroup != nullptr) {
-        particleGroup->setInstances(instanceData);
-    }
+    auto& instanceData = particleGroup->getInstancesMutable();
+    shark::exec::for_each_index(
+        shark::exec::par_unseq, particles.size(), [this, &rotMat, &instanceData](std::size_t i) {
+            Vector3 worldPos            = rotMat.transformVector(particles[i].position);
+            instanceData[i].modelMatrix = Matrix4::translate(worldPos);
+            instanceData[i].color       = speedToColor(particles[i].velocity.length());
+        }
+    );
 }
 
 void FluidSim::renderImGui() {

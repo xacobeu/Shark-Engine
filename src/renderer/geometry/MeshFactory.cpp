@@ -151,9 +151,10 @@ Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickn
     float          ht    = thickness * 0.5f;
 
     auto addCuboid = [&](Vector3 center, Vector3 extents, Vector3 barColor) {
-        static constexpr std::array<Vector3, 6> faceNormals = {Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.0f, 0.0f, -1.0f},
-                                                               Vector3{0.0f, 1.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f},
-                                                               Vector3{1.0f, 0.0f, 0.0f}, Vector3{-1.0f, 0.0f, 0.0f}};
+        static constexpr std::array<Vector3, 6> faceNormals = {
+            Vector3{0.0f, 0.0f, 1.0f},  Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.0f, 1.0f, 0.0f},
+            Vector3{0.0f, -1.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f},  Vector3{-1.0f, 0.0f, 0.0f},
+        };
 
         static constexpr std::array<std::array<Vector3, 4>, 6> faceOffsets = {
             std::array<Vector3, 4>{Vector3{-1, -1, 1}, Vector3{1, -1, 1}, Vector3{1, 1, 1}, Vector3{-1, 1, 1}},
@@ -161,16 +162,17 @@ Mesh::MeshData MeshFactory::createBoxFrameMesh(const Vector3& size, float thickn
             std::array<Vector3, 4>{Vector3{-1, 1, -1}, Vector3{-1, 1, 1}, Vector3{1, 1, 1}, Vector3{1, 1, -1}},
             std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{1, -1, -1}, Vector3{1, -1, 1}, Vector3{-1, -1, 1}},
             std::array<Vector3, 4>{Vector3{1, -1, -1}, Vector3{1, 1, -1}, Vector3{1, 1, 1}, Vector3{1, -1, 1}},
-            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{-1, -1, 1}, Vector3{-1, 1, 1}, Vector3{-1, 1, -1}}
+            std::array<Vector3, 4>{Vector3{-1, -1, -1}, Vector3{-1, -1, 1}, Vector3{-1, 1, 1}, Vector3{-1, 1, -1}},
         };
 
         for (std::size_t f = 0; f < 6; ++f) {
-            auto faceBase = static_cast<unsigned int>(mesh.vertices.size());
+            auto faceBase = static_cast<int>(mesh.vertices.size());
             for (std::size_t v = 0; v < 4; ++v) {
                 Vector3 p = center
                             + Vector3{
-                                faceOffsets[f][v].x * extents.x, faceOffsets[f][v].y * extents.y,
-                                faceOffsets[f][v].z * extents.z
+                                faceOffsets[f][v].x * extents.x,
+                                faceOffsets[f][v].y * extents.y,
+                                faceOffsets[f][v].z * extents.z,
                             };
                 mesh.vertices.push_back(
                     Vertex{.position = p, .normal = faceNormals[f], .uv = Vector2{0.0f, 0.0f}, .color = barColor}

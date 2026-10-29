@@ -16,6 +16,10 @@ void Renderer::init(IRenderDevice* renderDevice) {
 }
 
 void Renderer::begin(int width, int height) {
+    // Drop GPU buffers for instanced entities that weren't drawn last frame (removed, hidden, or scene switched)
+    ++frameIndex;
+    std::erase_if(instanceCache, [this](const auto& entry) { return entry.second.lastUsedFrame + 1 < frameIndex; });
+
     if (device != nullptr) {
         device->setViewport(0, 0, width, height);
         device->begin(0.0f, 0.0f, 0.0f, 0.0f);
@@ -81,14 +85,32 @@ void Renderer::render(const Scene& scene, int width, int height) {
             continue;
         }
 
-        drawInstanced(instancedEntity->getMesh(), instancedEntity->getInstances(), instancedEntity->getTexture());
+        drawInstanced(
+            instancedEntity->getMesh(), uploadInstancesIfChanged(*instancedEntity), instancedEntity->getInstanceCount(),
+            instancedEntity->getTexture()
+        );
     }
 }
 
 void Renderer::drawInstanced(
     const std::shared_ptr<Mesh>& mesh, std::span<const InstanceData> instances, const std::shared_ptr<ITexture>& texture
 ) {
-    if (device == nullptr || !mesh || instances.empty() || !instancedShader) {
+    if (device == nullptr || instances.empty()) {
+        return;
+    }
+
+    if (!scratchInstances) {
+        scratchInstances = device->createInstanceBuffer();
+    }
+    scratchInstances->setData(instances.data(), instances.size_bytes());
+    drawInstanced(mesh, *scratchInstances, instances.size(), texture);
+}
+
+void Renderer::drawInstanced(
+    const std::shared_ptr<Mesh>& mesh, IInstanceBuffer& instances, std::size_t instanceCount,
+    const std::shared_ptr<ITexture>& texture
+) {
+    if (device == nullptr || !mesh || instanceCount == 0 || !instancedShader) {
         return;
     }
 
@@ -108,8 +130,7 @@ void Renderer::drawInstanced(
     buffers.ebo->bind();
 
     device->drawIndexedInstanced(
-        static_cast<unsigned int>(buffers.ebo->getIndexCount()), static_cast<unsigned int>(instances.size()),
-        instances.data(), instances.size_bytes()
+        static_cast<unsigned int>(buffers.ebo->getIndexCount()), static_cast<unsigned int>(instanceCount), instances
     );
 
     if (hasTexture) {
@@ -133,4 +154,19 @@ const Renderer::MeshBuffers& Renderer::uploadMeshIfNeeded(const std::shared_ptr<
     auto [insertedIt, inserted] = meshCache.emplace(key, std::move(buffers));
     (void)inserted;
     return insertedIt->second;
+}
+
+IInstanceBuffer& Renderer::uploadInstancesIfChanged(const InstancedEntity& entity) {
+    InstanceBuffers& cached = instanceCache[&entity];
+    cached.lastUsedFrame    = frameIndex;
+
+    if (!cached.buffer) {
+        cached.buffer = device->createInstanceBuffer();
+    }
+    if (cached.version != entity.getInstancesVersion()) {
+        const auto& instances = entity.getInstances();
+        cached.buffer->setData(instances.data(), instances.size() * sizeof(InstanceData));
+        cached.version = entity.getInstancesVersion();
+    }
+    return *cached.buffer;
 }

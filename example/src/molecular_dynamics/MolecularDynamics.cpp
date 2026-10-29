@@ -170,8 +170,8 @@ void MolecularDynamics::buildCellList(int nCells) {
         nextAtom.at(i) = prevHead;
         if (prevHead == -1) {
             // 3x3x2 coloring: same-colored cells never share a forward neighbor, so a color can run in parallel
-            const auto color = static_cast<std::size_t>((cx % 3) + (3 * (cy % 3)) + (9 * (cz & 1)));
-            colorCells[color].push_back({.x = cx, .y = cy, .z = cz});
+            const int color = (cx % 3) + (3 * (cy % 3)) + (9 * (cz & 1));
+            colorCells[static_cast<std::size_t>(color)].push_back({.x = cx, .y = cy, .z = cz});
         }
         cellHead.at(static_cast<size_t>(cIdx)) = static_cast<int>(i);
     }

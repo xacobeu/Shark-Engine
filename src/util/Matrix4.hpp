@@ -22,7 +22,7 @@ struct alignas(16) Matrix4 {
     [[nodiscard]] Matrix4 operator*(const Matrix4& rhs) const noexcept {
         using namespace shark::simd;
         Matrix4      result{};
-        const float4 c0 = load4_aligned(&m[0]);
+        const float4 c0 = load4_aligned(m.data());
         const float4 c1 = load4_aligned(&m[4]);
         const float4 c2 = load4_aligned(&m[8]);
         const float4 c3 = load4_aligned(&m[12]);
@@ -40,7 +40,7 @@ struct alignas(16) Matrix4 {
 
     [[nodiscard]] Vector4 operator*(const Vector4& v) const noexcept {
         using namespace shark::simd;
-        const float4 c0  = load4_aligned(&m[0]);
+        const float4 c0  = load4_aligned(m.data());
         const float4 c1  = load4_aligned(&m[4]);
         const float4 c2  = load4_aligned(&m[8]);
         const float4 c3  = load4_aligned(&m[12]);
@@ -50,7 +50,7 @@ struct alignas(16) Matrix4 {
 
     [[nodiscard]] Vector3 transformPoint(const Vector3& p) const noexcept {
         using namespace shark::simd;
-        const float4 c0  = load4_aligned(&m[0]);
+        const float4 c0  = load4_aligned(m.data());
         const float4 c1  = load4_aligned(&m[4]);
         const float4 c2  = load4_aligned(&m[8]);
         const float4 c3  = load4_aligned(&m[12]);
@@ -60,7 +60,7 @@ struct alignas(16) Matrix4 {
 
     [[nodiscard]] Vector3 transformVector(const Vector3& v) const noexcept {
         using namespace shark::simd;
-        const float4 c0  = load4_aligned(&m[0]);
+        const float4 c0  = load4_aligned(m.data());
         const float4 c1  = load4_aligned(&m[4]);
         const float4 c2  = load4_aligned(&m[8]);
         const float4 res = fma(c0, float4(v.x), fma(c1, float4(v.y), c2 * v.z));
@@ -69,7 +69,7 @@ struct alignas(16) Matrix4 {
 
     [[nodiscard]] Vector3 transformVectorTransposed(const Vector3& v) const noexcept {
         using namespace shark::simd;
-        float4 c0 = load4_aligned(&m[0]);
+        float4 c0 = load4_aligned(m.data());
         float4 c1 = load4_aligned(&m[4]);
         float4 c2 = load4_aligned(&m[8]);
         float4 c3(0.0f);
@@ -224,7 +224,7 @@ struct alignas(16) Matrix4 {
         const float4 col3 = float4(translation.x, translation.y, translation.z, 1.0f);
 
         Matrix4 r{};
-        store4_aligned(&r.m[0], col0);
+        store4_aligned(r.m.data(), col0);
         store4_aligned(&r.m[4], col1);
         store4_aligned(&r.m[8], col2);
         store4_aligned(&r.m[12], col3);

@@ -55,7 +55,6 @@ private:
     float relaxation           = 0.40f;
     float friction             = 0.0f;
 
-    std::vector<Particle>     particles;
-    std::vector<InstanceData> instanceData;
-    SpatialHashGrid           grid;
+    std::vector<Particle> particles;
+    SpatialHashGrid       grid;
 };

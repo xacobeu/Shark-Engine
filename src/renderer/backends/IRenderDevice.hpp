@@ -6,6 +6,7 @@
 #include <string>
 
 #include "IIndexBuffer.hpp"
+#include "IInstanceBuffer.hpp"
 #include "IShader.hpp"
 #include "ITexture.hpp"
 #include "IVertexBuffer.hpp"
@@ -30,7 +31,8 @@ public:
     virtual std::shared_ptr<IShader> createShader(const std::string& vertexPath, const std::string& fragmentPath) = 0;
     virtual std::shared_ptr<IShader>
     createShaderFromSource(const std::string& vertexSource, const std::string& fragmentSource) = 0;
-    virtual std::shared_ptr<ITexture> createTexture(const std::string& filepath)               = 0;
+    virtual std::shared_ptr<ITexture>        createTexture(const std::string& filepath)        = 0;
+    virtual std::shared_ptr<IInstanceBuffer> createInstanceBuffer()                            = 0;
 
     virtual void begin(float r, float g, float b, float a)        = 0;
     virtual void setViewport(int x, int y, int width, int height) = 0;
@@ -38,9 +40,11 @@ public:
     virtual void drawArrays(unsigned int vertexCount)             = 0;
     virtual void drawIndexedInstanced(
         unsigned int indexCount, unsigned int instanceCount, const void* instanceData, std::size_t instanceDataSize
-    )                                                                                      = 0;
-    virtual void drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) = 0;
-    virtual void setVSync(bool enabled)                                                    = 0;
+    ) = 0;
+    virtual void
+    drawIndexedInstanced(unsigned int indexCount, unsigned int instanceCount, IInstanceBuffer& instances) = 0;
+    virtual void drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount)                = 0;
+    virtual void setVSync(bool enabled)                                                                   = 0;
 
     [[nodiscard]] static std::unique_ptr<IRenderDevice> create(GraphicsAPI api);
 
