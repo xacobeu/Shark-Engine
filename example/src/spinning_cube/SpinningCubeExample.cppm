@@ -17,8 +17,9 @@ private:
     shark::Entity*      cube       = nullptr;
     shark::Light*       orbitLight = nullptr;
     shark::OrbitCamera* camera     = nullptr;
-    float        elapsed    = 0.0f;
-    int          frameCount = 0;
+
+    float elapsed    = 0.0f;
+    int   frameCount = 0;
 };
 } // export
 
@@ -33,7 +34,10 @@ void SpinningCubeExample::onAttach() {
                ->setPosition({.x = 0.0f, .y = 0.0f, .z = 0.0f})
                ->setTexture(getApp()->getDevice()->createTexture("res/textures/scifi_crate.png"));
 
-    scene.add<shark::Light>()->setType(shark::LightType::Ambient)->setColor({0.6f, 0.7f, 1.0f, 1.0f})->setIntensity(0.15f);
+    scene.add<shark::Light>()
+        ->setType(shark::LightType::Ambient)
+        ->setColor({0.6f, 0.7f, 1.0f, 1.0f})
+        ->setIntensity(0.15f);
     scene.add<shark::Light>()
         ->setType(shark::LightType::Directional)
         ->setDirection({-0.3f, -1.0f, -0.5f})

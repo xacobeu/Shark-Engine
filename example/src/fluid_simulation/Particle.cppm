@@ -12,12 +12,6 @@ struct Particle {
     Vector3 prevPosition{.x = 0.0f, .y = 0.0f, .z = 0.0f};
     Vector3 velocity{.x = 0.0f, .y = 0.0f, .z = 0.0f};
 
-    Vector3 positionDelta{};
-    Vector3 viscosityDelta{};
-    Vector3 vorticity{};
-    float   lambda             = 0.0f;
-    float   vorticityMagnitude = 0.0f;
-
     inline void clampToBounds(Vector3 bounds, float radius) {
         const Vector3 half = (bounds * 0.5f) - Vector3{radius, radius, radius};
         position           = clamp(position, -half, half);
@@ -134,8 +128,8 @@ public:
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dy = -1; dy <= 1; ++dy) {
                 const int rowStart = center + (nCellsX * (dy + (nCellsY * dz))) - 1;
-                const int begin = cellStart[static_cast<std::size_t>(rowStart)];
-                const int end   = cellStart[static_cast<std::size_t>(rowStart + 3)];
+                const int begin    = cellStart[static_cast<std::size_t>(rowStart)];
+                const int end      = cellStart[static_cast<std::size_t>(rowStart + 3)];
                 for (int j = begin; j < end; ++j) {
                     fn(static_cast<std::uint32_t>(j));
                 }

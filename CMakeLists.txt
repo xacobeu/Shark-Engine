@@ -12,6 +12,7 @@ set(CMAKE_COLOR_DIAGNOSTICS ON)
 
 if(EMSCRIPTEN)
     set(CMAKE_EXECUTABLE_SUFFIX ".html")
+    add_compile_options(-pthread)
 else()
     find_package(OpenGL REQUIRED)
 endif()
@@ -54,13 +55,16 @@ target_link_libraries(SharkEngine PUBLIC
 )
 
 if(EMSCRIPTEN)
+    target_compile_options(SharkEngine INTERFACE -pthread)
     target_link_options(SharkEngine INTERFACE
+        "-pthread"
         "-sUSE_GLFW=3"
         "-sFULL_ES3=1"
         "-sUSE_WEBGL2=1"
         "-sMIN_WEBGL_VERSION=2"
         "-sMAX_WEBGL_VERSION=2"
         "-sALLOW_MEMORY_GROWTH=1"
+        "-sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency"
         "--emrun"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/res@/res"
         "--shell-file" "${CMAKE_SOURCE_DIR}/res/web_template/index.html"

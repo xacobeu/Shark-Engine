@@ -22,6 +22,11 @@ public:
     static constexpr float   GRAVITY         = 9.8f;
     static constexpr Vector3 BOUNDS          = {4.0f, 4.0f, 4.0f};
     static constexpr float   DAMPING         = 0.9f;
+#ifdef __EMSCRIPTEN__
+    static constexpr int DEFAULT_PARTICLE_COUNT = 6000;
+#else
+    static constexpr int DEFAULT_PARTICLE_COUNT = 10000;
+#endif
 
     enum class SpawnPreset : std::uint8_t {
         Waves,
@@ -56,8 +61,8 @@ private:
     double lastMouseY      = 0.0;
     float  tiltSensitivity = 0.25f;
 
-    int   currentParticleCount = 10000;
-    int   uiParticleCount      = 10000;
+    int   currentParticleCount = DEFAULT_PARTICLE_COUNT;
+    int   uiParticleCount      = DEFAULT_PARTICLE_COUNT;
     bool  isPaused             = false;
     float gravity              = 9.8f;
     float restitution          = 0.25f;

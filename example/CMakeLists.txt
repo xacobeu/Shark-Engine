@@ -12,6 +12,12 @@ if(EMSCRIPTEN)
     target_link_options(SharkEngineExample PRIVATE
         "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/res@/res"
     )
+    add_custom_command(TARGET SharkEngineExample POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/res/web_template/coi-serviceworker.js"
+            "$<TARGET_FILE_DIR:SharkEngineExample>/coi-serviceworker.js"
+        COMMENT "Copying cross-origin isolation service worker next to the page"
+    )
 else()
     add_custom_command(TARGET SharkEngineExample POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
