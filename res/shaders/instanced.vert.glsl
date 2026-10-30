@@ -8,7 +8,15 @@ layout(location = 2) in vec2 aUV;
 layout(location = 4) in mat4 aInstanceModel;
 layout(location = 8) in vec4 aInstanceColor;
 
-uniform mat4 u_ViewProjection;
+#define MAX_LIGHTS 8
+
+layout(std140) uniform FrameData {
+    mat4 u_ViewProjection;
+    vec4 u_CameraPos; // xyz
+    vec4 u_LightPosType[MAX_LIGHTS];
+    vec4 u_LightColorRange[MAX_LIGHTS];
+    int u_LightCount;
+};
 
 out vec3 v_FragPos;
 out vec3 v_Normal;

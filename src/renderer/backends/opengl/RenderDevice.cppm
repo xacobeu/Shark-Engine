@@ -6,152 +6,270 @@ module;
 #include <glad/glad.h>
 #endif
 
+#include "imgui.h"
+#include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
 
 module shark:renderer.backends.opengl.RenderDevice;
 
 import std;
 
-import :renderer.backends.IIndexBuffer;
-import :renderer.backends.IInstanceBuffer;
+import :Window;
+import :renderer.backends.IBuffer;
+import :renderer.backends.IPipeline;
 import :renderer.backends.IRenderDevice;
-import :renderer.backends.IShader;
 import :renderer.backends.ITexture;
-import :renderer.backends.IVertexBuffer;
-import :renderer.backends.opengl.IndexBuffer;
-import :renderer.backends.opengl.InstanceBuffer;
+import :renderer.backends.opengl.Buffer;
 import :renderer.backends.opengl.Object;
-import :renderer.backends.opengl.Shader;
+import :renderer.backends.opengl.Pipeline;
 import :renderer.backends.opengl.Texture;
-import :renderer.backends.opengl.VertexBuffer;
+import :renderer.backends.opengl.UniformRing;
+import :util.Vector;
 
 namespace shark::GL {
 
 class RenderDevice final : public IRenderDevice {
 public:
-    std::shared_ptr<IVertexBuffer> createVertexBuffer(const void* data, std::size_t size) override;
-    std::shared_ptr<IIndexBuffer>  createIndexBuffer(const void* data, std::size_t count) override;
-    std::shared_ptr<IShader> createShader(const std::string& vertexPath, const std::string& fragmentPath) override;
-    std::shared_ptr<IShader>
-    createShaderFromSource(const std::string& vertexSource, const std::string& fragmentSource) override;
-    std::shared_ptr<ITexture>        createTexture(const std::string& filepath) override;
-    std::shared_ptr<IInstanceBuffer> createInstanceBuffer() override;
+    explicit RenderDevice(Window& window);
+    ~RenderDevice() override;
 
-    void begin(float r, float g, float b, float a) override;
+    RenderDevice(RenderDevice&&)            = delete ("ImGui's OpenGL backend is tied to this device");
+    RenderDevice& operator=(RenderDevice&&) = delete ("ImGui's OpenGL backend is tied to this device");
+
+    std::shared_ptr<IBuffer>   createBuffer(BufferUsage usage, const void* data, std::size_t size) override;
+    std::shared_ptr<ITexture>  createTexture(const std::string& filepath) override;
+    std::shared_ptr<IPipeline> createPipeline(const PipelineDesc& desc) override;
+
+    void beginImGuiFrame() override;
+    void beginFrame(int width, int height, const Vector4& clearColor) override;
+    void endFrame() override;
+
     void setViewport(int x, int y, int width, int height) override;
-    void drawIndexed(unsigned int indexCount) override;
-    void drawArrays(unsigned int vertexCount) override;
-    void drawIndexedInstanced(
-        unsigned int indexCount, unsigned int instanceCount, const void* instanceData, std::size_t instanceDataSize
-    ) override;
-    void drawIndexedInstanced(unsigned int indexCount, unsigned int instanceCount, IInstanceBuffer& instances) override;
-    void drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) override;
+    void setPipeline(const IPipeline& pipeline) override;
+    void setVertexBuffer(std::uint32_t slot, const IBuffer& buffer) override;
+    void setIndexBuffer(const IBuffer& buffer) override;
+    void setUniformData(std::uint32_t binding, const void* data, std::size_t size) override;
+    void setTexture(std::uint32_t binding, const ITexture* texture) override;
+
+    void draw(std::uint32_t vertexCount, std::uint32_t instanceCount) override;
+    void drawIndexed(std::uint32_t indexCount, std::uint32_t instanceCount) override;
+
     void setVSync(bool enabled) override;
 
 private:
-    GL::InstanceBuffer scratchInstances; // backs the raw-pointer drawIndexedInstanced overload
+    static constexpr std::size_t MAX_VERTEX_BUFFERS = 4;
+
+    void flushVertexState();
+
+    GLFWwindow*           window = nullptr;
+    GL::VertexArrayObject vao;
+    GL::UniformRing       uniforms;
+
+    // Attribute pointers are re-specified on the next draw whenever the pipeline or a vertex buffer changes,
+    // since GL 3.3 / ES 3.0 have no separate vertex buffer bindings.
+    const GL::Pipeline*                               pipeline = nullptr;
+    std::array<const GL::Buffer*, MAX_VERTEX_BUFFERS> vertexBuffers{};
+    std::array<std::uint64_t, MAX_VERTEX_BUFFERS>     vertexBufferSerials{};
+    const GL::Buffer*                                 indexBuffer       = nullptr;
+    std::uint32_t                                     enabledAttributes = 0;
+    bool                                              vertexStateDirty  = true;
 };
 
 } // namespace shark::GL
 
 namespace shark::GL {
 
-std::shared_ptr<IVertexBuffer> RenderDevice::createVertexBuffer(const void* data, std::size_t size) {
-    return std::make_shared<GL::VertexBuffer>(data, size);
+namespace {
+
+[[nodiscard]] constexpr GLint componentCount(VertexFormat format) {
+    switch (format) {
+    case VertexFormat::Float:
+        return 1;
+    case VertexFormat::Float2:
+        return 2;
+    case VertexFormat::Float3:
+        return 3;
+    case VertexFormat::Float4:
+        return 4;
+    }
+    return 4;
 }
 
-std::shared_ptr<IIndexBuffer> RenderDevice::createIndexBuffer(const void* data, std::size_t count) {
-    return std::make_shared<GL::IndexBuffer>(static_cast<const unsigned int*>(data), count);
+} // namespace
+
+RenderDevice::RenderDevice(Window& window) : window(window.getNativeHandle()) {
+    glfwMakeContextCurrent(this->window);
+
+#ifndef __EMSCRIPTEN__
+    if (gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)) == 0) {
+        throw std::runtime_error("Failed to initialize GLAD");
+    }
+#endif
+
+#ifdef __EMSCRIPTEN__
+    ImGui_ImplOpenGL3_Init("#version 300 es");
+#else
+    ImGui_ImplOpenGL3_Init("#version 330");
+#endif
+
+    vao.create();
 }
 
-std::shared_ptr<IShader> RenderDevice::createShader(const std::string& vertexPath, const std::string& fragmentPath) {
-    return std::make_shared<GL::Shader>(vertexPath, fragmentPath);
+RenderDevice::~RenderDevice() {
+    ImGui_ImplOpenGL3_Shutdown();
 }
 
-std::shared_ptr<IShader>
-RenderDevice::createShaderFromSource(const std::string& vertexSource, const std::string& fragmentSource) {
-    return std::make_shared<GL::Shader>(GL::Shader::SourceStringTag{}, vertexSource, fragmentSource);
+std::shared_ptr<IBuffer> RenderDevice::createBuffer(BufferUsage usage, const void* data, std::size_t size) {
+    return std::make_shared<GL::Buffer>(usage, data, size);
 }
 
 std::shared_ptr<ITexture> RenderDevice::createTexture(const std::string& filepath) {
     return std::make_shared<GL::Texture>(filepath);
 }
 
-std::shared_ptr<IInstanceBuffer> RenderDevice::createInstanceBuffer() {
-    return std::make_shared<GL::InstanceBuffer>();
+std::shared_ptr<IPipeline> RenderDevice::createPipeline(const PipelineDesc& desc) {
+    return std::make_shared<GL::Pipeline>(desc);
 }
 
-void RenderDevice::begin(float r, float g, float b, float a) {
-    glClearColor(r, g, b, a);
+void RenderDevice::beginImGuiFrame() {
+    ImGui_ImplOpenGL3_NewFrame();
+}
+
+void RenderDevice::beginFrame(int width, int height, const Vector4& clearColor) {
+    vao.bind();
+    pipeline = nullptr;
+    vertexBuffers.fill(nullptr);
+    vertexBufferSerials.fill(0);
+    indexBuffer      = nullptr;
+    vertexStateDirty = true;
+    uniforms.reset();
+
+    glViewport(0, 0, width, height);
+    glDepthMask(GL_TRUE); // a pipeline without depth writes would otherwise block the depth clear
+    glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
+}
+
+void RenderDevice::endFrame() {
+    if (ImDrawData* drawData = ImGui::GetDrawData()) {
+        ImGui_ImplOpenGL3_RenderDrawData(drawData);
+    }
+
+    if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+        GLFWwindow* backupCurrentContext = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backupCurrentContext);
+    }
+
+    glfwSwapBuffers(window);
 }
 
 void RenderDevice::setViewport(int x, int y, int width, int height) {
     glViewport(x, y, width, height);
 }
 
-void RenderDevice::drawIndexed(unsigned int indexCount) {
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, nullptr);
+void RenderDevice::setPipeline(const IPipeline& newPipeline) {
+    const auto& glPipeline = dynamic_cast<const GL::Pipeline&>(newPipeline);
+    if (&glPipeline == pipeline) {
+        return;
+    }
+    pipeline         = &glPipeline;
+    vertexStateDirty = true;
+
+    glUseProgram(pipeline->id());
+    if (pipeline->depthTest()) {
+        glEnable(GL_DEPTH_TEST);
+    } else {
+        glDisable(GL_DEPTH_TEST);
+    }
+    glDepthMask(pipeline->depthWrite() ? GL_TRUE : GL_FALSE);
 }
 
-void RenderDevice::drawArrays(unsigned int vertexCount) {
-    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+void RenderDevice::setVertexBuffer(std::uint32_t slot, const IBuffer& buffer) {
+    if (slot >= MAX_VERTEX_BUFFERS) {
+        throw std::out_of_range("Vertex buffer slot out of range");
+    }
+    const auto& glBuffer = dynamic_cast<const GL::Buffer&>(buffer);
+    // Compared by serial: a buffer freed mid-frame could be replaced by a new one at the same address.
+    if (vertexBufferSerials[slot] != glBuffer.serial()) {
+        vertexBuffers[slot]       = &glBuffer;
+        vertexBufferSerials[slot] = glBuffer.serial();
+        vertexStateDirty          = true;
+    }
 }
 
-void RenderDevice::drawIndexedInstanced(
-    unsigned int indexCount, unsigned int instanceCount, const void* instanceData, std::size_t instanceDataSize
-) {
-    if (instanceCount == 0 || (instanceData == nullptr) || instanceDataSize == 0) {
+void RenderDevice::setIndexBuffer(const IBuffer& buffer) {
+    indexBuffer = &dynamic_cast<const GL::Buffer&>(buffer);
+}
+
+void RenderDevice::setUniformData(std::uint32_t binding, const void* data, std::size_t size) {
+    uniforms.push(binding, data, size);
+}
+
+void RenderDevice::setTexture(std::uint32_t binding, const ITexture* texture) {
+    glActiveTexture(GL_TEXTURE0 + binding);
+    glBindTexture(GL_TEXTURE_2D, texture != nullptr ? dynamic_cast<const GL::Texture&>(*texture).id() : 0);
+}
+
+void RenderDevice::flushVertexState() {
+    if (pipeline == nullptr) {
+        throw std::logic_error("Draw issued without a pipeline");
+    }
+    if (!vertexStateDirty) {
         return;
     }
 
-    scratchInstances.setData(instanceData, instanceDataSize);
-    drawIndexedInstanced(indexCount, instanceCount, scratchInstances);
+    std::uint32_t wanted  = 0;
+    const auto    layouts = pipeline->vertexBuffers();
+    for (std::size_t slot = 0; slot < layouts.size(); ++slot) {
+        const auto& layout = layouts[slot];
+        const auto* buffer = slot < MAX_VERTEX_BUFFERS ? vertexBuffers[slot] : nullptr;
+        if (buffer == nullptr) {
+            throw std::logic_error("Pipeline expects a vertex buffer in slot " + std::to_string(slot));
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, buffer->id());
+        const GLuint divisor = layout.stepMode == VertexStepMode::Instance ? 1 : 0;
+        for (const auto& attribute : layout.attributes) {
+            glEnableVertexAttribArray(attribute.location);
+            glVertexAttribPointer(
+                attribute.location, componentCount(attribute.format), GL_FLOAT, GL_FALSE,
+                static_cast<GLsizei>(layout.stride), bufferOffset(attribute.offset)
+            );
+            glVertexAttribDivisor(attribute.location, divisor);
+            wanted |= 1u << attribute.location;
+        }
+    }
+
+    for (std::uint32_t stale = enabledAttributes & ~wanted; stale != 0; stale &= stale - 1) {
+        glDisableVertexAttribArray(static_cast<GLuint>(std::countr_zero(stale)));
+    }
+    enabledAttributes = wanted;
+    vertexStateDirty  = false;
 }
 
-void RenderDevice::drawIndexedInstanced(
-    unsigned int indexCount, unsigned int instanceCount, IInstanceBuffer& instances
-) {
-    if (instanceCount == 0) {
+void RenderDevice::draw(std::uint32_t vertexCount, std::uint32_t instanceCount) {
+    if (vertexCount == 0 || instanceCount == 0) {
         return;
     }
+    flushVertexState();
+    glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount), static_cast<GLsizei>(instanceCount));
+}
 
-    const auto& buffer = dynamic_cast<const GL::InstanceBuffer&>(instances);
-    buffer.bind();
-
-    constexpr auto stride = static_cast<GLsizei>(sizeof(float) * 20); // 4x4 matrix (16 floats) + vec4 color (4 floats)
-
-    // Locations 4, 5, 6, 7: mat4 modelMatrix (4 vec4s)
-    for (unsigned int i = 0; i < 4; ++i) {
-        GLuint loc = 4 + i;
-        glEnableVertexAttribArray(loc);
-        glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, stride, bufferOffset(sizeof(float) * 4 * i));
-        glVertexAttribDivisor(loc, 1);
+void RenderDevice::drawIndexed(std::uint32_t indexCount, std::uint32_t instanceCount) {
+    if (indexCount == 0 || instanceCount == 0) {
+        return;
     }
-
-    // Location 8: vec4 color
-    glEnableVertexAttribArray(8);
-    glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, stride, bufferOffset(sizeof(float) * 16));
-    glVertexAttribDivisor(8, 1);
-
+    if (indexBuffer == nullptr) {
+        throw std::logic_error("Indexed draw issued without an index buffer");
+    }
+    flushVertexState();
+    // Rebound every time: creating or updating an index buffer mid-frame replaces the VAO's element binding.
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->id());
     glDrawElementsInstanced(
         GL_TRIANGLES, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, nullptr, static_cast<GLsizei>(instanceCount)
     );
-
-    // Clean up divisors and disable instance attributes so standard draws are unaffected
-    for (unsigned int i = 0; i < 4; ++i) {
-        glVertexAttribDivisor(4 + i, 0);
-        glDisableVertexAttribArray(4 + i);
-    }
-    glVertexAttribDivisor(8, 0);
-    glDisableVertexAttribArray(8);
-
-    buffer.unbind();
-}
-
-void RenderDevice::drawArraysInstanced(unsigned int vertexCount, unsigned int instanceCount) {
-    glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount), static_cast<GLsizei>(instanceCount));
 }
 
 void RenderDevice::setVSync(bool enabled) {

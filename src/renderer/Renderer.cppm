@@ -3,12 +3,10 @@ export module shark:renderer.Renderer;
 import std;
 
 import :Layer;
-import :renderer.backends.IIndexBuffer;
-import :renderer.backends.IInstanceBuffer;
+import :renderer.backends.IBuffer;
+import :renderer.backends.IPipeline;
 import :renderer.backends.IRenderDevice;
-import :renderer.backends.IShader;
 import :renderer.backends.ITexture;
-import :renderer.backends.IVertexBuffer;
 import :renderer.geometry.Mesh;
 import :renderer.geometry.Vertex;
 import :renderer.scene.Node;
@@ -33,6 +31,7 @@ public:
 
     void init(IRenderDevice* device);
     void begin(int width, int height);
+    void end();
 
     void render(const Scene& scene, int width, int height);
 
@@ -41,49 +40,79 @@ public:
         const std::shared_ptr<ITexture>& texture = nullptr
     );
     void drawInstanced(
-        const std::shared_ptr<Mesh>& mesh, IInstanceBuffer& instances, std::size_t instanceCount,
+        const std::shared_ptr<Mesh>& mesh, const IBuffer& instances, std::size_t instanceCount,
         const std::shared_ptr<ITexture>& texture = nullptr
     );
 
     inline void clearCache() {
         meshCache.clear();
         instanceCache.clear();
+        scratchInstances.clear();
     }
 
 private:
+    // Binding numbers shared by the default and instanced pipelines.
+    static constexpr std::uint32_t FRAME_BINDING   = 0;
+    static constexpr std::uint32_t OBJECT_BINDING  = 1;
+    static constexpr std::uint32_t TEXTURE_BINDING = 2;
+
+    // std140 mirrors of the shader uniform blocks.
+    struct FrameUniforms {
+        Matrix4                                viewProjection = Matrix4::identity();
+        Vector4                                cameraPos{0.0f, 0.0f, 0.0f, 0.0f};
+        std::array<Vector4, Scene::MAX_LIGHTS> lightPosType{};
+        std::array<Vector4, Scene::MAX_LIGHTS> lightColorRange{};
+        std::int32_t                           lightCount = 0;
+        std::array<std::int32_t, 3>            padding{};
+    };
+    static_assert(sizeof(FrameUniforms) == 64 + 16 + (Scene::MAX_LIGHTS * 32) + 16);
+
+    struct ObjectUniforms {
+        Matrix4      model;
+        Matrix4      normalMatrix;
+        Vector4      color;
+        float        specular   = Entity::DEFAULT_SPECULAR;
+        float        shininess  = Entity::DEFAULT_SHININESS;
+        std::int32_t hasTexture = 0;
+        std::int32_t padding    = 0;
+    };
+    static_assert(sizeof(ObjectUniforms) == 160);
+
+    struct MaterialUniforms {
+        float        specular   = Entity::DEFAULT_SPECULAR;
+        float        shininess  = Entity::DEFAULT_SHININESS;
+        std::int32_t hasTexture = 0;
+        std::int32_t padding    = 0;
+    };
+    static_assert(sizeof(MaterialUniforms) == 16);
+
     struct MeshBuffers {
-        std::shared_ptr<IVertexBuffer> vbo;
-        std::shared_ptr<IIndexBuffer>  ebo;
+        std::shared_ptr<IBuffer> vertices;
+        std::shared_ptr<IBuffer> indices;
+        std::uint32_t            indexCount = 0;
     };
 
     struct InstanceBuffers {
-        std::shared_ptr<IInstanceBuffer> buffer;
-        std::uint64_t                    version       = 0;
-        std::uint64_t                    lastUsedFrame = 0;
-    };
-
-    struct LightBlock {
-        std::array<float, Scene::MAX_LIGHTS * 4> posType{};
-        std::array<float, Scene::MAX_LIGHTS * 4> colorRange{};
-        int                                      count = 0;
-        Vector3                                  cameraPos{0.0f, 0.0f, 0.0f};
+        std::shared_ptr<IBuffer> buffer;
+        std::uint64_t            version       = 0;
+        std::uint64_t            lastUsedFrame = 0;
     };
 
     const MeshBuffers& uploadMeshIfNeeded(const std::shared_ptr<Mesh>& mesh);
-    IInstanceBuffer&   uploadInstancesIfChanged(const InstancedEntity& entity);
+    const IBuffer&     uploadInstancesIfChanged(const InstancedEntity& entity);
     void               packLights(std::span<const std::shared_ptr<Light>> lights, const Vector3& cameraPos);
-    void               applyLighting(IShader& shader) const;
 
     IRenderDevice*                               device = nullptr;
-    std::shared_ptr<IShader>                     defaultShader;
-    std::shared_ptr<IShader>                     instancedShader;
-    Matrix4                                      currentViewProj = Matrix4::identity();
-    LightBlock                                   lightBlock;
+    std::shared_ptr<IPipeline>                   defaultPipeline;
+    std::shared_ptr<IPipeline>                   instancedPipeline;
+    FrameUniforms                                frameUniforms;
     std::unordered_map<const Mesh*, MeshBuffers> meshCache;
 
     std::unordered_map<const InstancedEntity*, InstanceBuffers> instanceCache;
-    std::shared_ptr<IInstanceBuffer>                            scratchInstances;
-    std::uint64_t                                               frameIndex = 0;
+    // One buffer per drawInstanced(span) call this frame, since a buffer is written at most once per frame.
+    std::vector<std::shared_ptr<IBuffer>> scratchInstances;
+    std::size_t                           scratchUsed = 0;
+    std::uint64_t                         frameIndex  = 0;
 };
 
 } // namespace shark
@@ -92,11 +121,31 @@ namespace shark {
 
 void Renderer::init(IRenderDevice* renderDevice) {
     device = renderDevice;
-    if (!defaultShader) {
-        defaultShader = device->createShader("res/shaders/default.vert.glsl", "res/shaders/default.frag.glsl");
+
+    const BindingDesc frameBinding{.binding = FRAME_BINDING, .type = BindingType::UniformBuffer, .name = "FrameData"};
+    const BindingDesc textureBinding{.binding = TEXTURE_BINDING, .type = BindingType::Texture, .name = "u_Texture"};
+
+    if (!defaultPipeline) {
+        defaultPipeline = device->createPipeline({
+            .shader        = "res/shaders/default",
+            .vertexBuffers = {Vertex::layout()},
+            .bindings      = {
+                frameBinding,
+                {.binding = OBJECT_BINDING, .type = BindingType::UniformBuffer, .name = "ObjectData"},
+                textureBinding,
+            },
+        });
     }
-    if (!instancedShader) {
-        instancedShader = device->createShader("res/shaders/instanced.vert.glsl", "res/shaders/instanced.frag.glsl");
+    if (!instancedPipeline) {
+        instancedPipeline = device->createPipeline({
+            .shader        = "res/shaders/instanced",
+            .vertexBuffers = {Vertex::layout(), InstanceData::layout()},
+            .bindings      = {
+                frameBinding,
+                {.binding = OBJECT_BINDING, .type = BindingType::UniformBuffer, .name = "MaterialData"},
+                textureBinding,
+            },
+        });
     }
 
     packLights({}, {0.0f, 0.0f, 0.0f});
@@ -106,10 +155,16 @@ void Renderer::begin(int width, int height) {
     // Drop GPU buffers for instanced entities that weren't drawn last frame (removed, hidden, or scene switched)
     ++frameIndex;
     std::erase_if(instanceCache, [this](const auto& entry) { return entry.second.lastUsedFrame + 1 < frameIndex; });
+    scratchUsed = 0;
 
     if (device != nullptr) {
-        device->setViewport(0, 0, width, height);
-        device->begin(0.0f, 0.0f, 0.0f, 0.0f);
+        device->beginFrame(width, height, {0.0f, 0.0f, 0.0f, 0.0f});
+    }
+}
+
+void Renderer::end() {
+    if (device != nullptr) {
+        device->endFrame();
     }
 }
 
@@ -127,14 +182,15 @@ void Renderer::render(const Scene& scene, int width, int height) {
     safeHeight      = std::max(safeHeight, 1.0f);
     float aspect    = static_cast<float>(width) / safeHeight;
 
-    Matrix4 projection = camera->getProjectionMatrix(aspect);
-    Matrix4 view       = camera->getViewMatrix();
-    Matrix4 viewProj   = projection * view;
-    currentViewProj    = viewProj;
+    Matrix4 projection           = camera->getProjectionMatrix(aspect);
+    Matrix4 view                 = camera->getViewMatrix();
+    frameUniforms.viewProjection = projection * view;
 
     packLights(scene.getLights(), camera->getEyePosition());
 
     // Render standard individual entities (uninstanced)
+    device->setPipeline(*defaultPipeline);
+    device->setUniforms(FRAME_BINDING, frameUniforms);
     for (const auto& entity : scene.getEntities()) {
         if (!entity || !entity->getMesh()) {
             continue;
@@ -143,7 +199,6 @@ void Renderer::render(const Scene& scene, int width, int height) {
         const auto& buffers = uploadMeshIfNeeded(entity->getMesh());
 
         const Transform& transform = entity->getTransform();
-        Matrix4          model     = Matrix4::trs(transform.position, transform.rotationDeg, transform.scale);
 
         auto    safeInverse  = [](float s) { return (s != 0.0f) ? 1.0f / s : 0.0f; };
         Vector3 inverseScale = {
@@ -151,32 +206,21 @@ void Renderer::render(const Scene& scene, int width, int height) {
             safeInverse(transform.scale.y),
             safeInverse(transform.scale.z),
         };
-        Matrix4 normalMatrix = Matrix4::trs({0.0f, 0.0f, 0.0f}, transform.rotationDeg, inverseScale);
 
-        bool hasTexture = (entity->getTexture() != nullptr);
-        if (hasTexture) {
-            entity->getTexture()->bind(0);
-        }
+        const ObjectUniforms object{
+            .model        = Matrix4::trs(transform.position, transform.rotationDeg, transform.scale),
+            .normalMatrix = Matrix4::trs({0.0f, 0.0f, 0.0f}, transform.rotationDeg, inverseScale),
+            .color        = entity->getColor(),
+            .specular     = entity->getSpecular(),
+            .shininess    = entity->getShininess(),
+            .hasTexture   = entity->getTexture() != nullptr ? 1 : 0,
+        };
+        device->setUniforms(OBJECT_BINDING, object);
+        device->setTexture(TEXTURE_BINDING, entity->getTexture().get());
 
-        defaultShader->bind();
-        defaultShader->setInt("u_HasTexture", hasTexture ? 1 : 0);
-        defaultShader->setInt("u_Texture", 0);
-        Vector4 color = entity->getColor();
-        defaultShader->setVec4("u_Color", color.x, color.y, color.z, color.w);
-        defaultShader->setFloat("u_Specular", entity->getSpecular());
-        defaultShader->setFloat("u_Shininess", entity->getShininess());
-        defaultShader->setMat4("u_Model", model.data());
-        defaultShader->setMat4("u_NormalMatrix", normalMatrix.data());
-        defaultShader->setMat4("u_ViewProjection", viewProj.data());
-        applyLighting(*defaultShader);
-
-        buffers.vbo->bind();
-        buffers.ebo->bind();
-        device->drawIndexed(static_cast<unsigned int>(buffers.ebo->getIndexCount()));
-
-        if (hasTexture) {
-            entity->getTexture()->unbind();
-        }
+        device->setVertexBuffer(0, *buffers.vertices);
+        device->setIndexBuffer(*buffers.indices);
+        device->drawIndexed(buffers.indexCount);
     }
 
     // Render instanced entities (opt-in 1-draw-call per group)
@@ -199,63 +243,47 @@ void Renderer::drawInstanced(
         return;
     }
 
-    if (!scratchInstances) {
-        scratchInstances = device->createInstanceBuffer();
+    if (scratchUsed == scratchInstances.size()) {
+        scratchInstances.push_back(device->createBuffer(BufferUsage::Vertex, nullptr, 0));
     }
-    scratchInstances->setData(instances.data(), instances.size_bytes());
-    drawInstanced(mesh, *scratchInstances, instances.size(), texture);
+    IBuffer& scratch = *scratchInstances[scratchUsed++];
+    scratch.setData(instances.data(), instances.size_bytes());
+    drawInstanced(mesh, scratch, instances.size(), texture);
 }
 
 void Renderer::drawInstanced(
-    const std::shared_ptr<Mesh>& mesh, IInstanceBuffer& instances, std::size_t instanceCount,
+    const std::shared_ptr<Mesh>& mesh, const IBuffer& instances, std::size_t instanceCount,
     const std::shared_ptr<ITexture>& texture
 ) {
-    if (device == nullptr || !mesh || instanceCount == 0 || !instancedShader) {
+    if (device == nullptr || !mesh || instanceCount == 0 || !instancedPipeline) {
         return;
     }
 
     const auto& buffers = uploadMeshIfNeeded(mesh);
 
-    bool hasTexture = (texture != nullptr);
-    if (hasTexture) {
-        texture->bind(0);
-    }
+    // Frame data is re-sent because a layer's own pipeline may have reused its binding since render().
+    device->setPipeline(*instancedPipeline);
+    device->setUniforms(FRAME_BINDING, frameUniforms);
+    device->setUniforms(OBJECT_BINDING, MaterialUniforms{.hasTexture = texture != nullptr ? 1 : 0});
+    device->setTexture(TEXTURE_BINDING, texture.get());
 
-    instancedShader->bind();
-    instancedShader->setInt("u_HasTexture", hasTexture ? 1 : 0);
-    instancedShader->setInt("u_Texture", 0);
-    instancedShader->setMat4("u_ViewProjection", currentViewProj.data());
-    instancedShader->setFloat("u_Specular", Entity::DEFAULT_SPECULAR);
-    instancedShader->setFloat("u_Shininess", Entity::DEFAULT_SHININESS);
-    applyLighting(*instancedShader);
-
-    buffers.vbo->bind();
-    buffers.ebo->bind();
-
-    device->drawIndexedInstanced(
-        static_cast<unsigned int>(buffers.ebo->getIndexCount()), static_cast<unsigned int>(instanceCount), instances
-    );
-
-    if (hasTexture) {
-        texture->unbind();
-    }
+    device->setVertexBuffer(0, *buffers.vertices);
+    device->setVertexBuffer(1, instances);
+    device->setIndexBuffer(*buffers.indices);
+    device->drawIndexed(buffers.indexCount, static_cast<std::uint32_t>(instanceCount));
 }
 
 void Renderer::packLights(std::span<const std::shared_ptr<Light>> lights, const Vector3& cameraPos) {
-    lightBlock           = {};
-    lightBlock.cameraPos = cameraPos;
+    frameUniforms.cameraPos       = {cameraPos.x, cameraPos.y, cameraPos.z, 0.0f};
+    frameUniforms.lightPosType    = {};
+    frameUniforms.lightColorRange = {};
+    frameUniforms.lightCount      = 0;
 
     auto push = [this](Vector3 posOrDir, LightType type, Vector4 color, float intensity, float range) {
-        const auto base                 = static_cast<std::size_t>(lightBlock.count) * 4;
-        lightBlock.posType[base + 0]    = posOrDir.x;
-        lightBlock.posType[base + 1]    = posOrDir.y;
-        lightBlock.posType[base + 2]    = posOrDir.z;
-        lightBlock.posType[base + 3]    = static_cast<float>(type);
-        lightBlock.colorRange[base + 0] = color.x * intensity;
-        lightBlock.colorRange[base + 1] = color.y * intensity;
-        lightBlock.colorRange[base + 2] = color.z * intensity;
-        lightBlock.colorRange[base + 3] = range;
-        ++lightBlock.count;
+        const auto index                     = static_cast<std::size_t>(frameUniforms.lightCount);
+        frameUniforms.lightPosType[index]    = {posOrDir.x, posOrDir.y, posOrDir.z, static_cast<float>(type)};
+        frameUniforms.lightColorRange[index] = {color.x * intensity, color.y * intensity, color.z * intensity, range};
+        ++frameUniforms.lightCount;
     };
 
     if (lights.empty()) {
@@ -266,21 +294,13 @@ void Renderer::packLights(std::span<const std::shared_ptr<Light>> lights, const 
     }
 
     for (const auto& light : lights) {
-        if (!light || std::cmp_greater_equal(lightBlock.count, Scene::MAX_LIGHTS)) {
+        if (!light || std::cmp_greater_equal(frameUniforms.lightCount, Scene::MAX_LIGHTS)) {
             continue;
         }
         const Vector3 posOrDir = (light->getType() == LightType::Directional) ? light->getDirection()
                                                                               : light->getPosition();
         push(posOrDir, light->getType(), light->getColor(), light->getIntensity(), light->getRange());
     }
-}
-
-void Renderer::applyLighting(IShader& shader) const {
-    shader.setInt("u_LightCount", lightBlock.count);
-    const auto count = static_cast<std::size_t>(lightBlock.count);
-    shader.setVec4Array("u_LightPosType[0]", lightBlock.posType.data(), count);
-    shader.setVec4Array("u_LightColorRange[0]", lightBlock.colorRange.data(), count);
-    shader.setVec3("u_CameraPos", lightBlock.cameraPos.x, lightBlock.cameraPos.y, lightBlock.cameraPos.z);
 }
 
 const Renderer::MeshBuffers& Renderer::uploadMeshIfNeeded(const std::shared_ptr<Mesh>& mesh) {
@@ -292,20 +312,22 @@ const Renderer::MeshBuffers& Renderer::uploadMeshIfNeeded(const std::shared_ptr<
 
     const auto& meshData = mesh->getData();
 
-    MeshBuffers buffers;
-    buffers.vbo = device->createVertexBuffer(meshData.vertices.data(), meshData.vertices.size() * sizeof(Vertex));
-    buffers.ebo = device->createIndexBuffer(meshData.triangles.data(), meshData.triangles.size());
+    MeshBuffers buffers{
+        .vertices   = device->createBuffer(BufferUsage::Vertex, std::span{meshData.vertices}),
+        .indices    = device->createBuffer(BufferUsage::Index, std::span{meshData.triangles}),
+        .indexCount = static_cast<std::uint32_t>(meshData.triangles.size()),
+    };
 
     auto [insertedIt, _] = meshCache.emplace(key, std::move(buffers));
     return insertedIt->second;
 }
 
-IInstanceBuffer& Renderer::uploadInstancesIfChanged(const InstancedEntity& entity) {
+const IBuffer& Renderer::uploadInstancesIfChanged(const InstancedEntity& entity) {
     InstanceBuffers& cached = instanceCache[&entity];
     cached.lastUsedFrame    = frameIndex;
 
     if (!cached.buffer) {
-        cached.buffer = device->createInstanceBuffer();
+        cached.buffer = device->createBuffer(BufferUsage::Vertex, nullptr, 0);
     }
     if (cached.version != entity.getInstancesVersion()) {
         const auto& instances = entity.getInstances();

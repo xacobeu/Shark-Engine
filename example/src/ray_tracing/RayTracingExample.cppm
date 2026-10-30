@@ -34,8 +34,26 @@ public:
     void initSpheres();
 
 private:
-    std::shared_ptr<IShader>       raytraceShader;
-    std::shared_ptr<IVertexBuffer> quadVbo;
+    // std140 mirrors of the shader's uniform blocks
+    struct Params {
+        Vector4                     cameraPos;
+        float                       aspectRatio        = 1.0f;
+        float                       reflectionStrength = 0.0f;
+        std::int32_t                sphereCount        = 0;
+        std::int32_t                enableShadows      = 0;
+        std::int32_t                enableReflections  = 0;
+        std::array<std::int32_t, 3> padding{};
+    };
+    static_assert(sizeof(Params) == 48);
+
+    struct GpuSphere {
+        Vector4 posRad;
+        Vector4 colShiny;
+    };
+    using SphereBlock = std::array<GpuSphere, MAX_SPHERES>;
+
+    std::shared_ptr<IPipeline> raytracePipeline;
+    std::shared_ptr<IBuffer>   quadVbo;
 
     float time               = 0.0f;
     bool  enableShadows      = true;
@@ -143,9 +161,17 @@ void RayTracingExample::initSpheres() {
 void RayTracingExample::onAttach() {
     getApp()->setScene(nullptr);
 
-    raytraceShader = getApp()->getDevice()->createShader(
-        "res/shaders/raytrace.vert.glsl", "res/shaders/raytrace.frag.glsl"
-    );
+    raytracePipeline = getApp()->getDevice()->createPipeline({
+        .shader        = "res/shaders/raytrace",
+        .vertexBuffers = {Vertex::layout()},
+        .bindings =
+            {
+                {.binding = 0, .type = BindingType::UniformBuffer, .name = "RayTraceParams"},
+                {.binding = 1, .type = BindingType::UniformBuffer, .name = "SphereBlock"},
+            },
+        .depthTest  = false,
+        .depthWrite = false,
+    });
 
     std::array<Vertex, 6> quadVertices = {
         Vertex{
@@ -187,13 +213,13 @@ void RayTracingExample::onAttach() {
         },
     };
 
-    quadVbo = getApp()->getDevice()->createVertexBuffer(std::span{quadVertices});
+    quadVbo = getApp()->getDevice()->createBuffer(BufferUsage::Vertex, std::span{quadVertices});
 
     initSpheres();
 }
 
 void RayTracingExample::onDetach() {
-    raytraceShader.reset();
+    raytracePipeline.reset();
     quadVbo.reset();
 }
 
@@ -222,30 +248,25 @@ void RayTracingExample::onUpdate(float deltaTime) {
 }
 
 void RayTracingExample::onRender(Renderer&) {
-    if (!raytraceShader || !quadVbo) {
+    if (!raytracePipeline || !quadVbo) {
         return;
     }
 
-    raytraceShader->bind();
-
-    auto safeHeight   = static_cast<float>(getApp()->getHeight());
-    safeHeight        = std::max(safeHeight, 1.0f);
-    float aspectRatio = static_cast<float>(getApp()->getWidth()) / safeHeight;
-    raytraceShader->setFloat("u_AspectRatio", aspectRatio);
-    raytraceShader->setFloat("u_Time", time);
-    raytraceShader->setVec3("u_CameraPos", cameraPos.x, cameraPos.y, cameraPos.z);
-    raytraceShader->setInt("u_EnableShadows", enableShadows ? 1 : 0);
-    raytraceShader->setInt("u_EnableReflections", enableReflections ? 1 : 0);
-    raytraceShader->setFloat("u_ReflectionStrength", reflectionStrength);
+    auto safeHeight = static_cast<float>(getApp()->getHeight());
+    safeHeight      = std::max(safeHeight, 1.0f);
 
     int count = std::clamp(sphereCount, 1, static_cast<int>(spheres.size()));
-    raytraceShader->setInt("u_SphereCount", count);
 
-    struct GpuSphere {
-        Vector4 posRad;
-        Vector4 colShiny;
+    const Params params{
+        .cameraPos          = Vector4{.x = cameraPos.x, .y = cameraPos.y, .z = cameraPos.z, .w = 0.0f},
+        .aspectRatio        = static_cast<float>(getApp()->getWidth()) / safeHeight,
+        .reflectionStrength = reflectionStrength,
+        .sphereCount        = count,
+        .enableShadows      = enableShadows ? 1 : 0,
+        .enableReflections  = enableReflections ? 1 : 0,
     };
-    std::array<GpuSphere, MAX_SPHERES> sphereData{};
+
+    SphereBlock sphereData{};
     for (std::size_t i = 0; std::cmp_less(i, count); ++i) {
         const Vector3& pos = spheres[i].currentPos;
         const Vector3& col = spheres[i].color;
@@ -255,14 +276,12 @@ void RayTracingExample::onRender(Renderer&) {
         };
     }
 
-    raytraceShader->setUniformBlock(
-        "SphereBlock", sphereData.data(), static_cast<std::size_t>(count) * sizeof(GpuSphere)
-    );
-
-    quadVbo->bind();
-    getApp()->getDevice()->drawArrays(6);
-    quadVbo->unbind();
-    raytraceShader->unbind();
+    IRenderDevice* device = getApp()->getDevice();
+    device->setPipeline(*raytracePipeline);
+    device->setUniforms(0, params);
+    device->setUniforms(1, sphereData);
+    device->setVertexBuffer(0, *quadVbo);
+    device->draw(6);
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360, 480), ImGuiCond_FirstUseEver);

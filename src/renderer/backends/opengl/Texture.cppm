@@ -30,11 +30,9 @@ public:
     Texture(Texture&&) noexcept            = default;
     Texture& operator=(Texture&&) noexcept = default;
 
-    void bind(unsigned int slot = 0) const override;
-    void unbind() const override;
-
-    [[nodiscard]] inline int getWidth() const override { return width; }
-    [[nodiscard]] inline int getHeight() const override { return height; }
+    [[nodiscard]] inline int    getWidth() const override { return width; }
+    [[nodiscard]] inline int    getHeight() const override { return height; }
+    [[nodiscard]] inline GLuint id() const { return glTexture.get(); }
 
 private:
     GL::TextureObject glTexture;
@@ -110,15 +108,6 @@ Texture::Texture(const std::string& filepath) {
         std::println(std::cerr, "[ERROR] Failed to load texture at path: {}", filepath);
         throw std::runtime_error("Failed to load texture: " + filepath);
     }
-}
-
-void Texture::bind(unsigned int slot) const {
-    glActiveTexture(GL_TEXTURE0 + slot);
-    glTexture.bind(GL_TEXTURE_2D);
-}
-
-void Texture::unbind() const {
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 } // namespace shark::GL

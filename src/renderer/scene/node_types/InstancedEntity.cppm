@@ -3,6 +3,7 @@ export module shark:renderer.scene.node_types.InstancedEntity;
 import std;
 
 import :renderer.scene.Node;
+import :renderer.backends.IPipeline;
 import :renderer.backends.ITexture;
 import :renderer.geometry.Mesh;
 import :util.Matrix4;
@@ -12,6 +13,21 @@ export namespace shark {
 struct alignas(16) InstanceData {
     Matrix4 modelMatrix; // 64 bytes (locations 4, 5, 6, 7)
     Vector4 color;       // 16 bytes (location 8)
+
+    [[nodiscard]] static VertexBufferLayout layout() {
+        constexpr std::uint32_t column = sizeof(float) * 4;
+        return {
+            .stride     = sizeof(InstanceData),
+            .stepMode   = VertexStepMode::Instance,
+            .attributes = {
+                {.location = 4, .format = VertexFormat::Float4, .offset = 0 * column},
+                {.location = 5, .format = VertexFormat::Float4, .offset = 1 * column},
+                {.location = 6, .format = VertexFormat::Float4, .offset = 2 * column},
+                {.location = 7, .format = VertexFormat::Float4, .offset = 3 * column},
+                {.location = 8, .format = VertexFormat::Float4, .offset = sizeof(Matrix4)},
+            },
+        };
+    }
 };
 
 class InstancedEntity : public Node {

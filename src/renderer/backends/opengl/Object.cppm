@@ -91,6 +91,12 @@ template <GLenum target> struct BufferOperations {
     static void Data(GLsizeiptr size, const void* data, GLenum usage) { glBufferData(target, size, data, usage); }
 };
 
+// For buffers whose target is only known at runtime; bind them with glBindBuffer(target, object.get()).
+struct UntargetedBufferOperations {
+    static void Gen(GLsizei n, GLuint* ids) { glGenBuffers(n, ids); }
+    static void Del(GLsizei n, const GLuint* ids) { glDeleteBuffers(n, ids); }
+};
+
 struct TextureOperations {
     static inline void Gen(GLsizei n, GLuint* ids) { glGenTextures(n, ids); }
     static inline void Del(GLsizei n, const GLuint* ids) { glDeleteTextures(n, ids); }
@@ -98,7 +104,7 @@ struct TextureOperations {
 };
 
 using TextureObject       = Object<TextureOperations>;
-using VertexBufferObject  = Object<BufferOperations<GL_ARRAY_BUFFER>>;
-using ElementBufferObject = Object<BufferOperations<GL_ELEMENT_ARRAY_BUFFER>>;
+using BufferObject        = Object<UntargetedBufferOperations>;
+using UniformBufferObject = Object<BufferOperations<GL_UNIFORM_BUFFER>>;
 using VertexArrayObject   = Object<VertexArrayOperations>;
 } // namespace shark::GL

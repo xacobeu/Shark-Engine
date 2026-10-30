@@ -5,15 +5,16 @@ in vec2 v_TexCoord;
 
 out vec4 fragColor;
 
-uniform float u_AspectRatio;
-uniform float u_Time;
-uniform vec3 u_CameraPos;
-uniform int u_EnableShadows;
-uniform int u_EnableReflections;
-uniform float u_ReflectionStrength;
+layout(std140) uniform RayTraceParams {
+    vec4 u_CameraPos; // xyz
+    float u_AspectRatio;
+    float u_ReflectionStrength;
+    int u_SphereCount;
+    int u_EnableShadows;
+    int u_EnableReflections;
+};
 
 const int MAX_SPHERES = 128;
-uniform int u_SphereCount;
 struct Sphere {
     vec4 posRad;    // xyz = center, w = radius
     vec4 colShiny;  // xyz = color, w = shininess (0.0 to 1.0)
@@ -150,7 +151,7 @@ vec3 trace(vec3 ro, vec3 rd) {
 
 void main() {
     vec2 ndc = v_TexCoord * 2.0 - 1.0;
-    vec3 ro = u_CameraPos;
+    vec3 ro = u_CameraPos.xyz;
     vec3 rd = normalize(vec3(ndc.x * u_AspectRatio, ndc.y, -1.0));
 
     vec3 col = trace(ro, rd);

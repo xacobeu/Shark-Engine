@@ -8,9 +8,24 @@ out vec3 v_FragPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 
-uniform mat4 u_Model;
-uniform mat4 u_NormalMatrix;
-uniform mat4 u_ViewProjection;
+#define MAX_LIGHTS 8
+
+layout(std140) uniform FrameData {
+    mat4 u_ViewProjection;
+    vec4 u_CameraPos; // xyz
+    vec4 u_LightPosType[MAX_LIGHTS];
+    vec4 u_LightColorRange[MAX_LIGHTS];
+    int u_LightCount;
+};
+
+layout(std140) uniform ObjectData {
+    mat4 u_Model;
+    mat4 u_NormalMatrix;
+    vec4 u_Color;
+    float u_Specular;
+    float u_Shininess;
+    int u_HasTexture;
+};
 
 void main() {
     vec4 worldPos = u_Model * vec4(aPos, 1.0);

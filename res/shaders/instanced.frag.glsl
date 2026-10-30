@@ -9,20 +9,26 @@ in vec4 v_Color;
 
 out vec4 fragColor;
 
-uniform int u_HasTexture;
-uniform sampler2D u_Texture;
-
 #define MAX_LIGHTS 8
 
-uniform int u_LightCount;
-uniform vec4 u_LightPosType[MAX_LIGHTS];
-uniform vec4 u_LightColorRange[MAX_LIGHTS];
-uniform vec3 u_CameraPos;
-uniform float u_Specular;
-uniform float u_Shininess;
+layout(std140) uniform FrameData {
+    mat4 u_ViewProjection;
+    vec4 u_CameraPos; // xyz
+    vec4 u_LightPosType[MAX_LIGHTS];
+    vec4 u_LightColorRange[MAX_LIGHTS];
+    int u_LightCount;
+};
+
+layout(std140) uniform MaterialData {
+    float u_Specular;
+    float u_Shininess;
+    int u_HasTexture;
+};
+
+uniform sampler2D u_Texture;
 
 vec3 computeLighting(vec3 base, vec3 N, vec3 fragPos) {
-    vec3 V = normalize(u_CameraPos - fragPos);
+    vec3 V = normalize(u_CameraPos.xyz - fragPos);
     vec3 result = vec3(0.0);
 
     for (int i = 0; i < MAX_LIGHTS; ++i) {

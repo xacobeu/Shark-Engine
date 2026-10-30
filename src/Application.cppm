@@ -14,6 +14,7 @@ import :Input;
 import :Layer;
 import :Window;
 import :renderer.Renderer;
+import :renderer.backends.GraphicsAPI;
 import :renderer.backends.IRenderDevice;
 
 export namespace shark {
@@ -82,9 +83,10 @@ private:
     Scene* activeScene = nullptr;
     Config config;
 
+    // Destroyed bottom-up: GPU caches, then the device, then the window that owns the surface/context.
+    Window                         window;
     std::unique_ptr<IRenderDevice> device;
     Renderer                       renderer;
-    Window                         window;
 
     std::vector<std::unique_ptr<Layer>> layers;
 
@@ -134,8 +136,10 @@ static void emscriptenLoop(void* arg) {
 }
 #endif
 
-Application::Application(const Config& config) : config(config), window(config.width, config.height, config.title) {
-    device = IRenderDevice::create(config.api);
+Application::Application(const Config& config)
+    : config(config),
+      window(config.width, config.height, config.title, config.api),
+      device(IRenderDevice::create(config.api, window)) {
     renderer.init(device.get());
     device->setVSync(config.vsync);
 }
@@ -164,6 +168,7 @@ void Application::runStep() {
     window.pollEvents();
     window.getDimensions(config.width, config.height);
 
+    device->beginImGuiFrame();
     Window::beginImGuiFrame();
 
     if (activeScene != nullptr) {
@@ -185,7 +190,7 @@ void Application::runStep() {
     }
 
     Window::endImGuiFrame();
-    window.swapBuffers();
+    renderer.end();
     window.resetScroll();
 }
 

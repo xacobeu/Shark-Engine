@@ -1,14 +1,7 @@
 module;
 
-#ifdef SHARK_NO_GLAD
-#include <GLES3/gl3.h>
-#else
-#include <glad/glad.h>
-#endif
-
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
 
 #ifdef __EMSCRIPTEN__
@@ -20,6 +13,7 @@ export module shark:Window;
 import std;
 
 import :Input;
+import :renderer.backends.GraphicsAPI;
 import :util.ResourcePath;
 
 extern "C++" struct GLFWwindow;
@@ -27,16 +21,18 @@ extern "C++" struct GLFWwindow;
 export namespace shark {
 class Window {
 public:
-    Window(int width, int height, const char* title);
+    // Only creates a GL context for GraphicsAPI::OpenGL; the render device makes it current and loads it.
+    Window(int width, int height, const char* title, GraphicsAPI api);
     ~Window();
 
     Window(const Window&)            = delete ("owns the GLFW window");
     Window& operator=(const Window&) = delete ("owns the GLFW window");
 
-    void initImGui();
-
+    // The render device's beginImGuiFrame must run first, and its endFrame draws what endImGuiFrame produced.
     static void beginImGuiFrame();
     static void endImGuiFrame();
+
+    [[nodiscard]] inline GLFWwindow* getNativeHandle() const noexcept { return window; }
 
     [[nodiscard]] static bool isMouseCaptured() noexcept;
     [[nodiscard]] static bool isKeyboardCaptured() noexcept;
@@ -57,7 +53,6 @@ public:
 
     void pollEvents();
 
-    void swapBuffers() const;
     void getDimensions(int& width, int& height) const;
 
     [[nodiscard]] bool        isKeyPressed(int key) const;
@@ -87,6 +82,8 @@ private:
 
     Events events{};
 
+    void initImGui(GraphicsAPI api);
+
     static void _mouseButtonCallback(GLFWwindow* win, int button, int action, int mods);
     static void _cursorPosCallback(GLFWwindow* win, double x, double y);
     static void _scrollCallback(GLFWwindow* win, double xoffset, double yoffset);
@@ -99,21 +96,25 @@ private:
 
 namespace shark {
 
-Window::Window(int width, int height, const char* title) {
+Window::Window(int width, int height, const char* title, GraphicsAPI api) {
     if (glfwInit() == 0) {
         std::println("GLFW Init Failed!");
         return;
     }
 
+    if (api == GraphicsAPI::OpenGL) {
 #ifdef __EMSCRIPTEN__
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #else
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
+    } else {
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    }
 
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (window == nullptr) {
@@ -121,16 +122,6 @@ Window::Window(int width, int height, const char* title) {
         glfwTerminate();
         return;
     }
-
-    glfwMakeContextCurrent(window);
-
-#ifndef __EMSCRIPTEN__
-    // Load OpenGL.
-    if (gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)) == 0) {
-        std::println("Failed to initialize GLAD\n");
-        return;
-    }
-#endif
 
     glfwSetWindowUserPointer(window, this);
 
@@ -141,11 +132,10 @@ Window::Window(int width, int height, const char* title) {
     glfwSetScrollCallback(window, _scrollCallback);
     glfwSetCharCallback(window, _charCallback);
 
-    initImGui();
+    initImGui(api);
 }
 
 Window::~Window() {
-    ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
@@ -153,7 +143,7 @@ Window::~Window() {
     glfwTerminate();
 }
 
-void Window::initImGui() {
+void Window::initImGui(GraphicsAPI api) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -178,30 +168,20 @@ void Window::initImGui() {
 
     ImGui::StyleColorsDark();
 
-    ImGui_ImplGlfw_InitForOpenGL(window, false);
-#ifdef __EMSCRIPTEN__
-    ImGui_ImplOpenGL3_Init("#version 300 es");
-#else
-    ImGui_ImplOpenGL3_Init("#version 330");
-#endif
+    if (api == GraphicsAPI::OpenGL) {
+        ImGui_ImplGlfw_InitForOpenGL(window, false);
+    } else {
+        ImGui_ImplGlfw_InitForOther(window, false);
+    }
 }
 
 void Window::beginImGuiFrame() {
-    ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
 void Window::endImGuiFrame() {
     ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
-        GLFWwindow* backup_current_context = glfwGetCurrentContext();
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-        glfwMakeContextCurrent(backup_current_context);
-    }
 }
 
 bool Window::isMouseCaptured() noexcept {
@@ -278,10 +258,6 @@ bool Window::shouldClose() const {
 
 void Window::close() {
     glfwSetWindowShouldClose(window, GLFW_TRUE);
-}
-
-void Window::swapBuffers() const {
-    glfwSwapBuffers(window);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
