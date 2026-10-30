@@ -1,4 +1,2 @@
 build/
 .vscode/
-.deps/
-profile.json.gz
