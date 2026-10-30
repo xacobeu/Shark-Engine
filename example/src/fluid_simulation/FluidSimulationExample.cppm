@@ -7,6 +7,7 @@ export module examples.fluid_simulation;
 import std;
 
 import examples.fluid_simulation.particle;
+import examples.fluid_simulation.pbf;
 
 import shark;
 
@@ -16,6 +17,8 @@ export {
 class FluidSimulationExample : public Layer {
 public:
     static constexpr float   PARTICLE_RADIUS = 0.05f;
+    static constexpr float   REST_SPACING    = PARTICLE_RADIUS * 2.0f;
+    static constexpr float   KERNEL_RADIUS   = REST_SPACING * 2.0f;
     static constexpr float   GRAVITY         = 9.8f;
     static constexpr Vector3 BOUNDS          = {4.0f, 4.0f, 4.0f};
     static constexpr float   DAMPING         = 0.9f;
@@ -42,9 +45,8 @@ private:
     InstancedEntity* particleGroup  = nullptr;
     Entity*          boxFrameEntity = nullptr;
 
-    // Box tilt dynamics and force state
-    Vector3 boxRot{0.0f, 0.0f, 0.0f};    // in degrees (pitch X, yaw Y, roll Z)
-    Vector3 boxAngVel{0.0f, 0.0f, 0.0f}; // in deg/s
+    Vector3 boxRot{0.0f, 0.0f, 0.0f};    // degrees
+    Vector3 boxAngVel{0.0f, 0.0f, 0.0f}; // deg/s
     Vector3 boxAngAcc{0.0f, 0.0f, 0.0f};
     Vector3 prevBoxAngVel{0.0f, 0.0f, 0.0f};
     Vector3 boxTargetRot{0.0f, 0.0f, 0.0f};
@@ -59,9 +61,11 @@ private:
     bool  isPaused             = false;
     float gravity              = 9.8f;
     float restitution          = 0.25f;
-    float viscosity            = 0.018f;
-    float relaxation           = 0.40f;
     float friction             = 0.0f;
+    int   substeps             = 2;
+
+    PositionBasedFluidSolver           solver;
+    PositionBasedFluidSolver::Settings fluidSettings;
 
     std::vector<Particle> particles;
     SpatialHashGrid       grid;
@@ -112,24 +116,38 @@ void FluidSimulationExample::resetSimulation() {
     const float floorY  = -(BOUNDS.y * 0.5f) + (PARTICLE_RADIUS * 1.5f);
 
     if (currentPreset == SpawnPreset::Waves) {
-        const float maxDepthX = BOUNDS.x * 0.85f;
-        int         nx        = std::max(1, static_cast<int>(std::floor(maxDepthX / spacing)));
-        int         remaining = (currentParticleCount + nx - 1) / nx;
-        int         nz = std::max(1, static_cast<int>(std::round(std::sqrt(static_cast<float>(remaining) / 1.6f))));
-        nz             = std::min(nz, std::max(1, static_cast<int>((BOUNDS.z * 0.40f) / spacing)));
-        int ny         = (remaining + nz - 1) / nz;
+        auto layersThatFit = [](float extent, float step) {
+            return std::max(1, static_cast<int>(std::floor((extent - (PARTICLE_RADIUS * 3.0f)) / step)) + 1);
+        };
+
+        float waveSpacing = spacing;
+        if (layersThatFit(BOUNDS.x * 0.85f, waveSpacing) * layersThatFit(BOUNDS.y, waveSpacing)
+                * layersThatFit(BOUNDS.z, waveSpacing)
+            < currentParticleCount) {
+            waveSpacing = REST_SPACING;
+        }
+
+        const int nx    = layersThatFit(BOUNDS.x * 0.85f, waveSpacing);
+        const int maxNy = layersThatFit(BOUNDS.y, waveSpacing);
+        const int maxNz = layersThatFit(BOUNDS.z, waveSpacing);
+
+        const int perSlice = (currentParticleCount + nx - 1) / nx;
+        int       nz       = std::max(1, static_cast<int>(std::round(std::sqrt(static_cast<float>(perSlice) / 1.6f))));
+        nz                 = std::min(nz, std::max(1, static_cast<int>((BOUNDS.z * 0.40f) / waveSpacing)));
+        nz                 = std::clamp(std::max(nz, (perSlice + maxNy - 1) / maxNy), 1, maxNz);
+        const int ny       = (perSlice + nz - 1) / nz;
 
         const float startZ  = halfZ;
         const float startY  = floorY;
-        const float offsetX = (static_cast<float>(nx - 1) * 0.5f) * spacing;
+        const float offsetX = (static_cast<float>(nx - 1) * 0.5f) * waveSpacing;
 
         int particleIdx = 0;
         for (int iy = 0; iy < ny && particleIdx < currentParticleCount; ++iy) {
             for (int iz = 0; iz < nz && particleIdx < currentParticleCount; ++iz) {
                 for (int ix = 0; ix < nx && particleIdx < currentParticleCount; ++ix) {
-                    float x = (static_cast<float>(ix) * spacing) - offsetX;
-                    float y = startY + (static_cast<float>(iy) * spacing);
-                    float z = startZ - (static_cast<float>(iz) * spacing);
+                    float x = (static_cast<float>(ix) * waveSpacing) - offsetX;
+                    float y = startY + (static_cast<float>(iy) * waveSpacing);
+                    float z = startZ - (static_cast<float>(iz) * waveSpacing);
 
                     float jitterX = (randomFloat() - 0.5f) * (PARTICLE_RADIUS * 0.08f);
                     float jitterZ = (randomFloat() - 0.5f) * (PARTICLE_RADIUS * 0.08f);
@@ -187,8 +205,9 @@ void FluidSimulationExample::onAttach() {
     boxFrameEntity = scene.add<Entity>()->setMesh(boxMesh)->setColor({0.85f, 0.92f, 1.0f, 1.0f});
 
     resetBox();
+    solver.init(REST_SPACING, KERNEL_RADIUS);
+    grid.init(BOUNDS, KERNEL_RADIUS);
     resetSimulation();
-    grid.init(BOUNDS, PARTICLE_RADIUS * 2.0f);
 }
 
 void FluidSimulationExample::onDetach() {
@@ -208,7 +227,6 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
         return;
     }
 
-    // Process interactive mouse dragging of the box
     const bool imguiWantsMouse = Application::isMouseCaptured();
     double     mouseX          = getApp()->getCursorX();
     double     mouseY          = getApp()->getCursorY();
@@ -226,10 +244,8 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
 
             float yawRad = (camera != nullptr) ? (camera->getRotation().y * std::numbers::pi_v<float> / 180.0f) : 0.0f;
 
-            // Camera right vector in XZ plane for horizontal tilt axis (pitch)
             Vector3 camRight{std::sin(yawRad), 0.0f, -std::cos(yawRad)};
 
-            // dy tilts pitch around camera horizontal axis; dx yaws around vertical Y axis
             Vector3 deltaRot = (camRight * (dy * tiltSensitivity)) + Vector3{0.0f, dx * tiltSensitivity, 0.0f};
 
             boxTargetRot += deltaRot;
@@ -247,7 +263,6 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
         boxTargetRot  = {0.0f, 0.0f, 0.0f};
     }
 
-    // Physics step for box tilt (spring-damper dynamics)
     constexpr float springStiffness = 45.0f;
     constexpr float springDamping   = 8.0f;
 
@@ -259,7 +274,6 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
     const float invDt = 1.0f / dt;
     boxAngAcc         = (boxAngVel - prevBoxAngVel) * invDt;
 
-    // Safety clamp on acceleration spikes from sudden mouse jumps
     constexpr float MAX_ANG_ACC = 400.0f;
     if (boxAngAcc.lengthSq() > (MAX_ANG_ACC * MAX_ANG_ACC)) {
         boxAngAcc *= MAX_ANG_ACC / boxAngAcc.length();
@@ -267,64 +281,60 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
 
     prevBoxAngVel = boxAngVel;
 
-    // Build rotation matrix (Z * Y * X)
     Matrix4 rotMat = Matrix4::trs({0.0f, 0.0f, 0.0f}, boxRot, {1.0f, 1.0f, 1.0f});
 
-    // Compute effective accelerations in box-local frame
     Vector3 localGravity = rotMat.transformVectorTransposed(Vector3{0.0f, -gravity, 0.0f});
 
     Vector3 radAngVel = rotMat.transformVectorTransposed(boxAngVel * (std::numbers::pi_v<float> / 180.0f));
     Vector3 radAngAcc = rotMat.transformVectorTransposed(boxAngAcc * (std::numbers::pi_v<float> / 180.0f));
 
     if (!isPaused) {
-        // Predict particle positions via forces
-        shark::exec::for_each(shark::exec::par_unseq, particles, [localGravity, radAngVel, radAngAcc, dt](Particle& p) {
-            Vector3 r      = p.position; // local position relative to box center
-            Vector3 a_ang  = -cross(radAngAcc, r);
-            Vector3 a_cent = -cross(radAngVel, cross(radAngVel, r));
-            Vector3 a_cor  = cross(radAngVel, p.velocity) * (-2.0f);
+        const float subDt    = dt / static_cast<float>(substeps);
+        const float invSubDt = 1.0f / subDt;
 
-            Vector3 effAcc = localGravity + a_ang + a_cent + a_cor;
+        for (int step = 0; step < substeps; ++step) {
+            shark::exec::for_each(
+                shark::exec::par_unseq, particles, [localGravity, radAngVel, radAngAcc, subDt](Particle& p) {
+                    Vector3 r      = p.position;
+                    Vector3 a_ang  = -cross(radAngAcc, r);
+                    Vector3 a_cent = -cross(radAngVel, cross(radAngVel, r));
+                    Vector3 a_cor  = cross(radAngVel, p.velocity) * (-2.0f);
 
-            p.velocity += effAcc * dt;
-            p.prevPosition = p.position;
-            p.position += p.velocity * dt;
-        });
+                    Vector3 effAcc = localGravity + a_ang + a_cent + a_cor;
 
-        // Build spatial grid with predicted positions
-        grid.build(particles);
+                    p.velocity += effAcc * subDt;
+                    p.prevPosition = p.position;
+                    p.position += p.velocity * subDt;
+                }
+            );
 
-        // Iteratively project collisions (PBD relaxation)
-        constexpr int solverIterations = 3;
-        for (auto _ : std::views::iota(0, solverIterations)) {
-            grid.solveCollisions(particles, PARTICLE_RADIUS * 2.0f, relaxation);
-            shark::exec::for_each(shark::exec::par_unseq, particles, [](Particle& p) {
-                p.clampToBounds(BOUNDS, PARTICLE_RADIUS);
+            grid.build(particles);
+
+            solver.findNeighbors(grid, particles);
+
+            solver.solveDensity(particles, BOUNDS, PARTICLE_RADIUS, fluidSettings);
+
+            constexpr float MAX_SPEED    = 15.0f;
+            constexpr float MAX_SPEED_SQ = MAX_SPEED * MAX_SPEED;
+
+            const float rest = restitution;
+            const float fric = friction;
+            shark::exec::for_each(shark::exec::par_unseq, particles, [invSubDt, subDt, rest, fric](Particle& p) {
+                p.velocity = (p.position - p.prevPosition) * invSubDt;
+
+                float speedSq = p.velocity.lengthSq();
+                if (speedSq > MAX_SPEED_SQ) {
+                    float factor = MAX_SPEED / std::sqrt(speedSq);
+                    p.velocity *= factor;
+                }
+
+                p.resolveBoundaryVelocity(BOUNDS, PARTICLE_RADIUS, subDt, rest, fric);
             });
+
+            solver.applyVelocityCorrections(particles, fluidSettings, subDt);
         }
-
-        constexpr float MAX_SPEED    = 15.0f;
-        constexpr float MAX_SPEED_SQ = MAX_SPEED * MAX_SPEED;
-
-        const float rest = restitution;
-        const float fric = friction;
-        shark::exec::for_each(shark::exec::par_unseq, particles, [invDt, dt, rest, fric](Particle& p) {
-            p.velocity = (p.position - p.prevPosition) * invDt;
-
-            float speedSq = p.velocity.lengthSq();
-            if (speedSq > MAX_SPEED_SQ) {
-                float factor = MAX_SPEED / std::sqrt(speedSq);
-                p.velocity *= factor;
-            }
-
-            p.resolveBoundaryVelocity(BOUNDS, PARTICLE_RADIUS, dt, rest, fric);
-        });
-
-        // Viscosity smoothing (XSPH)
-        grid.applyViscosity(particles, PARTICLE_RADIUS * 2.5f, viscosity);
     }
 
-    // Update visual transforms
     if (boxFrameEntity != nullptr) {
         boxFrameEntity->setPosition({0.0f, 0.0f, 0.0f})->setRotation(boxRot);
     }
@@ -344,7 +354,6 @@ void FluidSimulationExample::renderImGui() {
     ImGui::SetNextWindowSize(ImVec2(340, 320), ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
 
-    // Particle count controls (applies on slider release)
     if (ImGui::SliderInt("Particles", &uiParticleCount, 500, 50000)) {
         uiParticleCount = std::clamp(uiParticleCount, 100, 100000);
     }
@@ -372,9 +381,15 @@ void FluidSimulationExample::renderImGui() {
     ImGui::Separator();
     ImGui::SliderFloat("Restitution", &restitution, 0.0f, 0.6f, "%.2f");
     ImGui::SliderFloat("Friction", &friction, 0.0f, 0.1f, "%.4f");
-    ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 0.05f, "%.4f");
-    ImGui::SliderFloat("Relaxation", &relaxation, 0.1f, 0.8f, "%.2f");
     ImGui::SliderFloat("Gravity", &gravity, 0.0f, 25.0f, "%.1f");
+
+    ImGui::SeparatorText("Fluid");
+    ImGui::SliderInt("Substeps", &substeps, 1, 4);
+    ImGui::SliderInt("Iterations", &fluidSettings.iterations, 1, 8);
+    ImGui::SliderFloat("Compliance", &fluidSettings.compliance, 0.01f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Artificial Pressure", &fluidSettings.tensileStrength, 0.0f, 0.2f, "%.3f");
+    ImGui::SliderFloat("Vorticity", &fluidSettings.vorticity, 0.0f, 0.5f, "%.3f");
+    ImGui::SliderFloat("Viscosity", &fluidSettings.viscosity, 0.0f, 0.2f, "%.3f");
 
     ImGui::End();
 }
