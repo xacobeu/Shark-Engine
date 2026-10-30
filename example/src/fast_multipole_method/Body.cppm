@@ -1,13 +1,11 @@
-export module examples:fast_multipole_method.Particle;
+export module examples.fast_multipole_method.body;
 
 import shark;
 
 using namespace shark;
 
 export {
-namespace fmm {
-
-struct alignas(16) Particle {
+struct alignas(16) Body {
     Vector3 position{0.0f, 0.0f, 0.0f};
     Vector3 velocity{0.0f, 0.0f, 0.0f};
     Vector3 acceleration{0.0f, 0.0f, 0.0f};
@@ -19,7 +17,5 @@ struct alignas(16) Particle {
         acceleration = {0.0f, 0.0f, 0.0f};
     }
 };
-
-} // namespace fmm
 
 } // export

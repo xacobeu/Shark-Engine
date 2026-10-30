@@ -2,16 +2,88 @@ module;
 
 #include "imgui.h"
 
-module examples:fast_multipole_method.FMMLayer.impl;
+export module examples.fast_multipole_method;
 
 import std;
 
-import :fast_multipole_method.FMMLayer;
-import :fast_multipole_method.Particle;
+import examples.fast_multipole_method.adaptive_fmm;
+import examples.fast_multipole_method.body;
 
 import shark;
 
 using namespace shark;
+
+export {
+class FastMultipoleMethodExample : public Layer {
+public:
+    static constexpr std::size_t DEFAULT_NUM_PARTICLES = 10000;
+    static constexpr Vector3     BOUNDS                = {200.0f, 200.0f, 200.0f};
+    static constexpr float       PARTICLE_RADIUS       = 0.08f;
+    static constexpr float       G_CONSTANT            = 2.5f;
+
+    void onAttach() override;
+    void onDetach() override;
+    void onFixedUpdate(float fixedDt) override;
+    void onUpdate(float deltaTime) override;
+    void onRender(Renderer& renderer) override;
+
+    void resetSimulation(std::size_t count);
+
+private:
+    enum class Distribution : std::uint8_t { Disc, Uniform };
+
+    struct KuzminDiskConfig {
+        float         particleMass       = 0.05f;
+        float         coreRadius         = 14.0f;
+        float         maxRadiusRatio     = 0.35f;
+        float         verticalDispersion = 1.5f;
+        float         thermalDispersion  = 0.06f;
+        std::uint32_t seed               = 42;
+    };
+
+    struct UniformConfig {
+        float         particleMass   = 0.05f;
+        float         maxRadiusRatio = 0.35f;
+        std::uint32_t seed           = 42;
+    };
+
+    static void
+    generateKuzminDisk(std::span<Body> particles, std::span<InstanceData> instanceData, const KuzminDiskConfig& cfg);
+    static void generateUniformDistribution(
+        std::span<Body> particles, std::span<InstanceData> instanceData, const UniformConfig& cfg
+    );
+
+    void                renderImGui();
+    void                solve();
+    [[nodiscard]] float measureColorMaxSpeed() const;
+
+    static constexpr std::size_t ERROR_UPDATE_INTERVAL_STEPS = 20;
+    static constexpr std::size_t ERROR_SAMPLE_COUNT          = 100;
+
+    // Top of the colormap sits at this multiple of the RMS particle speed.
+    static constexpr float COLOR_RMS_MULTIPLIER          = 1.6f;
+    static constexpr float COLOR_RANGE_SMOOTHING_SECONDS = 0.5f;
+
+    Scene            scene;
+    InstancedEntity* particleGroup = nullptr;
+
+    std::vector<Body>    particles;
+    std::vector<Vector3> previousPositions;
+
+    AdaptiveFMM         fmm;
+    AdaptiveFMM::Config fmmConfig;
+    float               lastFmmTimeMs    = 0.0f;
+    float               observedErrorPct = 0.0f;
+    std::size_t         stepCount        = 0;
+    float               colorMaxSpeed    = 1.0f;
+
+    Distribution distribution         = Distribution::Disc;
+    bool         isPaused             = false;
+    int          uiParticleCount      = DEFAULT_NUM_PARTICLES;
+    std::size_t  currentParticleCount = DEFAULT_NUM_PARTICLES;
+};
+
+} // export
 
 namespace {
 // matplotlib's "magma" colormap, sampled at 17 evenly spaced stops (t = i / 16).
@@ -33,7 +105,7 @@ Vector4 magma(float t) {
 }
 } // namespace
 
-void FMMLayer::onAttach() {
+void FastMultipoleMethodExample::onAttach() {
     getApp()->setScene(&scene);
 
     auto* camera = scene.add<OrbitCamera>()->setDistance(140.0f)->setPanEnabled(false);
@@ -46,13 +118,13 @@ void FMMLayer::onAttach() {
     resetSimulation(currentParticleCount);
 }
 
-void FMMLayer::onDetach() {
+void FastMultipoleMethodExample::onDetach() {
     particles.clear();
     previousPositions.clear();
     particleGroup = nullptr;
 }
 
-void FMMLayer::resetSimulation(std::size_t count) {
+void FastMultipoleMethodExample::resetSimulation(std::size_t count) {
     currentParticleCount = count;
     uiParticleCount      = static_cast<int>(count);
 
@@ -77,12 +149,12 @@ void FMMLayer::resetSimulation(std::size_t count) {
     previousPositions.clear();
 }
 
-void FMMLayer::solve() {
+void FastMultipoleMethodExample::solve() {
     fmm.buildTree(particles, {0.0f, 0.0f, 0.0f}, BOUNDS.x * 0.5f);
     fmm.execute(particles, G_CONSTANT);
 }
 
-float FMMLayer::measureColorMaxSpeed() const {
+float FastMultipoleMethodExample::measureColorMaxSpeed() const {
     if (particles.empty()) {
         return 1.0f;
     }
@@ -97,7 +169,7 @@ float FMMLayer::measureColorMaxSpeed() const {
     return std::max(rms * COLOR_RMS_MULTIPLIER, 1e-3f);
 }
 
-void FMMLayer::onFixedUpdate(float fixedDt) {
+void FastMultipoleMethodExample::onFixedUpdate(float fixedDt) {
     if (isPaused) {
         return;
     }
@@ -116,10 +188,10 @@ void FMMLayer::onFixedUpdate(float fixedDt) {
         stepCount        = 0;
     }
 
-    shark::exec::for_each(shark::exec::par_unseq, particles, [fixedDt](fmm::Particle& p) { p.integrate(fixedDt); });
+    shark::exec::for_each(shark::exec::par_unseq, particles, [fixedDt](Body& p) { p.integrate(fixedDt); });
 }
 
-void FMMLayer::onUpdate(float deltaTime) {
+void FastMultipoleMethodExample::onUpdate(float deltaTime) {
     if (isPaused) {
         return;
     }
@@ -143,7 +215,7 @@ void FMMLayer::onUpdate(float deltaTime) {
     );
 }
 
-void FMMLayer::renderImGui() {
+void FastMultipoleMethodExample::renderImGui() {
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(340, 340), ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
@@ -204,13 +276,13 @@ void FMMLayer::renderImGui() {
     ImGui::End();
 }
 
-void FMMLayer::onRender(Renderer& renderer) {
+void FastMultipoleMethodExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
     renderImGui();
 }
 
-void FMMLayer::generateKuzminDisk(
-    std::span<fmm::Particle> particles, std::span<InstanceData> instanceData, const KuzminDiskConfig& cfg
+void FastMultipoleMethodExample::generateKuzminDisk(
+    std::span<Body> particles, std::span<InstanceData> instanceData, const KuzminDiskConfig& cfg
 ) {
     const std::size_t count = std::min(particles.size(), instanceData.size());
     if (count == 0) {
@@ -249,8 +321,8 @@ void FMMLayer::generateKuzminDisk(
     }
 }
 
-void FMMLayer::generateUniformDistribution(
-    std::span<fmm::Particle> particles, std::span<InstanceData> instanceData, const UniformConfig& cfg
+void FastMultipoleMethodExample::generateUniformDistribution(
+    std::span<Body> particles, std::span<InstanceData> instanceData, const UniformConfig& cfg
 ) {
     const std::size_t count = std::min(particles.size(), instanceData.size());
     if (count == 0) {

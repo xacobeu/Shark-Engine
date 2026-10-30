@@ -4,12 +4,12 @@ import std;
 
 import :util.SIMD;
 
-namespace shark::detail {
+namespace shark {
 
 template <std::size_t N, typename T>
 inline constexpr bool is_simd_vec_v = std::is_same_v<T, float> && (N == 3 || N == 4);
 
-} // namespace shark::detail
+} // namespace shark
 
 export namespace shark {
 
@@ -17,7 +17,7 @@ template <std::size_t N, typename T = float> struct Vec;
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline T dot(const Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             if constexpr (N == 3) {
                 return shark::simd::dot3(a.toSimd(), b.toSimd());
@@ -45,7 +45,7 @@ template <std::size_t N, typename T> [[nodiscard]] constexpr inline Vec<N, T> op
 }
 
 template <std::size_t N, typename T> [[nodiscard]] constexpr inline Vec<N, T> operator-(const Vec<N, T>& a) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimdFast(-a.toSimd());
         }
@@ -66,7 +66,7 @@ template <std::size_t N, typename T> [[nodiscard]] constexpr inline Vec<N, T> op
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline Vec<N, T> operator+(const Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimdFast(a.toSimd() + b.toSimd());
         }
@@ -87,7 +87,7 @@ template <std::size_t N, typename T>
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline Vec<N, T> operator-(const Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimdFast(a.toSimd() - b.toSimd());
         }
@@ -108,7 +108,7 @@ template <std::size_t N, typename T>
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline Vec<N, T> operator*(const Vec<N, T>& a, T s) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimdFast(a.toSimd() * s);
         }
@@ -134,7 +134,7 @@ template <std::size_t N, typename T>
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline Vec<N, T> operator*(const Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimdFast(a.toSimd() * b.toSimd());
         }
@@ -155,7 +155,7 @@ template <std::size_t N, typename T>
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline Vec<N, T> operator/(const Vec<N, T>& a, T s) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimd(a.toSimd() * (1.0f / s));
         }
@@ -176,7 +176,7 @@ template <std::size_t N, typename T>
 
 template <std::size_t N, typename T>
 [[nodiscard]] constexpr inline Vec<N, T> operator/(const Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             return Vec<N, T>::fromSimd(a.toSimd() / b.toSimd());
         }
@@ -196,7 +196,7 @@ template <std::size_t N, typename T>
 }
 
 template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator+=(Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             shark::simd::store4_aligned(&a.x, a.toSimd() + b.toSimd());
             return a;
@@ -222,7 +222,7 @@ template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator+=(Vec<
 }
 
 template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator-=(Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             shark::simd::store4_aligned(&a.x, a.toSimd() - b.toSimd());
             return a;
@@ -248,7 +248,7 @@ template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator-=(Vec<
 }
 
 template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator*=(Vec<N, T>& a, T s) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             shark::simd::store4_aligned(&a.x, a.toSimd() * s);
             return a;
@@ -274,7 +274,7 @@ template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator*=(Vec<
 }
 
 template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator*=(Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             shark::simd::store4_aligned(&a.x, a.toSimd() * b.toSimd());
             return a;
@@ -300,7 +300,7 @@ template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator*=(Vec<
 }
 
 template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator/=(Vec<N, T>& a, T s) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             if constexpr (N == 3) {
                 shark::simd::store4_aligned(&a.x, shark::simd::zero_w(a.toSimd() * (1.0f / s)));
@@ -330,7 +330,7 @@ template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator/=(Vec<
 }
 
 template <std::size_t N, typename T> constexpr inline Vec<N, T>& operator/=(Vec<N, T>& a, const Vec<N, T>& b) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         if !consteval {
             if constexpr (N == 3) {
                 shark::simd::store4_aligned(&a.x, shark::simd::zero_w(a.toSimd() / b.toSimd()));
@@ -505,7 +505,7 @@ template <std::size_t N, typename T> [[nodiscard]] inline T length(const Vec<N, 
 }
 
 template <std::size_t N, typename T> [[nodiscard]] inline Vec<N, T> normalize(const Vec<N, T>& v) noexcept {
-    if constexpr (detail::is_simd_vec_v<N, T>) {
+    if constexpr (is_simd_vec_v<N, T>) {
         return v.normalized();
     } else {
         T len2 = v.dot(v);

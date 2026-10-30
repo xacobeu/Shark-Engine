@@ -1,4 +1,4 @@
-export module examples:fluid_simulation.Particle;
+export module examples.fluid_simulation.particle;
 
 import std;
 

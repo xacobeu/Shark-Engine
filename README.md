@@ -12,7 +12,7 @@ A cross-platform C++26 rendering engine.
 
 * **Clang 21+** (the engine is built as C++20 modules and uses `import std;`)
 * **A standard library that ships the `std` module**: MSVC STL (Visual Studio 17.6+), libstdc++ from GCC 15+, or libc++ (Emscripten's works out of the box)
-* **CMake 3.28+**
+* **CMake 3.30+**
 * **Ninja** (CMake's Makefile generators can't build C++ modules)
 
 (optional):

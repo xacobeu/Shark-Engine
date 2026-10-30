@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.30)
 
 cmake_policy(SET CMP0072 NEW)
 set(OpenGL_GL_PREFERENCE GLVND)
@@ -31,15 +31,17 @@ add_compile_options(
 include(cmake/StdModule.cmake)
 
 # Core Engine Target
-file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 file(GLOB_RECURSE ENGINE_MODULES CONFIGURE_DEPENDS "src/*.cppm")
-file(GLOB_RECURSE ENGINE_INTERNAL_MODULES CONFIGURE_DEPENDS "src/renderer/backends/opengl/*.cppm")
+file(GLOB_RECURSE ENGINE_INTERNAL_MODULES CONFIGURE_DEPENDS
+    "src/renderer/backends/opengl/*.cppm"
+    "src/renderer/backends/RenderDeviceFactory.cppm"
+)
 list(REMOVE_ITEM ENGINE_MODULES ${ENGINE_INTERNAL_MODULES})
 add_library(SharkEngine)
 add_library(SharkEngine::SharkEngine ALIAS SharkEngine)
 target_sources(SharkEngine
     PUBLIC FILE_SET CXX_MODULES BASE_DIRS src FILES ${ENGINE_MODULES}
-    PRIVATE FILE_SET engine_impl TYPE CXX_MODULES BASE_DIRS src FILES ${ENGINE_INTERNAL_MODULES} ${ENGINE_SOURCES}
+    PRIVATE FILE_SET engine_impl TYPE CXX_MODULES BASE_DIRS src FILES ${ENGINE_INTERNAL_MODULES}
 )
 
 target_link_libraries(SharkEngine PUBLIC
@@ -62,6 +64,9 @@ if(EMSCRIPTEN)
         "--emrun"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/res@/res"
         "--shell-file" "${CMAKE_SOURCE_DIR}/res/web_template/index.html"
+    )
+    set_property(TARGET SharkEngine APPEND PROPERTY
+        INTERFACE_LINK_DEPENDS "${CMAKE_SOURCE_DIR}/res/web_template/index.html"
     )
 elseif(NOT WIN32)
     find_package(TBB QUIET)

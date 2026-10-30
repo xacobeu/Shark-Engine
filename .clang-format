@@ -54,7 +54,7 @@ SortIncludes:
   IgnoreCase: false
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: 'GLHeader\.hpp"$'
+  - Regex: '^<(glad|GLES3)/'
     Priority: 1
   - Regex: '^"imgui.*'
     Priority: 3

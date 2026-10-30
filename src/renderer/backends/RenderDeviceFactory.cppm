@@ -1,4 +1,4 @@
-module shark:renderer.backends.IRenderDevice.impl;
+module shark:renderer.backends.RenderDeviceFactory;
 
 import std;
 

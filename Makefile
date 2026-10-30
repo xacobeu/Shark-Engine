@@ -41,11 +41,11 @@ clean:
 	rm -rf build
 
 format:
-	@find src example -type f \( -name "*.cpp" -o -name "*.cppm" -o -name "*.hpp" \) -exec clang-format -i {} +
+	@find src example -type f -name "*.cppm" -exec clang-format -i {} +
 	@echo "Code formatting complete."
 
 check-format:
-	@find src example -type f \( -name "*.cpp" -o -name "*.cppm" -o -name "*.hpp" \) -exec clang-format --dry-run --Werror {} +
+	@find src example -type f -name "*.cppm" -exec clang-format --dry-run --Werror {} +
 	@echo "All files passed formatting check."
 
 tidy:
@@ -54,7 +54,7 @@ tidy:
 		cmake --preset desktop > /dev/null; \
 	fi
 	@echo "Running Clang-Tidy analysis (read-only)..."
-	@find src example -type f -name "*.cpp" -exec clang-tidy -p build/desktop-dev --quiet {} +
+	@find src example -type f -name "*.cppm" -exec clang-tidy -p build/desktop-dev --quiet {} +
 
 desktop web:
 	@:

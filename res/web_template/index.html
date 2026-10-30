@@ -70,7 +70,12 @@
             console.error(event);
         };
 
+        let emrunExitSent = false;
         function notifyEmrunExit() {
+            if (emrunExitSent) {
+                return;
+            }
+            emrunExitSent = true;
             try {
                 if (navigator.sendBeacon) {
                     navigator.sendBeacon(window.location.href, '^exit^0');
@@ -80,7 +85,6 @@
             } catch (e) {}
         }
         window.addEventListener('pagehide', notifyEmrunExit);
-        window.addEventListener('beforeunload', notifyEmrunExit);
     </script>
     {{{ SCRIPT }}}
 </body>

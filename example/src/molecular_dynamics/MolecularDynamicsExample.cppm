@@ -2,20 +2,111 @@ module;
 
 #include "imgui.h"
 
-module examples:molecular_dynamics.MolecularDynamics.impl;
+export module examples.molecular_dynamics;
 
 import std;
-
-import :molecular_dynamics.MolecularDynamics;
 
 import shark;
 
 using namespace shark;
 
-MolecularDynamics::MolecularDynamics(std::size_t atomCount)
+export {
+class MolecularDynamicsExample : public Layer {
+public:
+    explicit MolecularDynamicsExample(std::size_t atomCount = 100);
+
+    void onAttach() override;
+    void onDetach() override;
+    void onFixedUpdate(float fixedDt) override;
+    void onUpdate(float deltaTime) override;
+    void onRender(Renderer& renderer) override;
+
+    void                             setAtomCount(std::size_t count);
+    [[nodiscard]] inline std::size_t getAtomCount() const { return numAtoms; }
+
+private:
+    static constexpr float       SUB_DT     = 0.004f;
+    static constexpr std::size_t NUM_COLORS = 18;
+
+    struct ParticleData {
+        std::vector<Vector3> positions;
+        std::vector<Vector3> velocities;
+        std::vector<Vector3> forces;
+        std::vector<int>     species;
+        std::vector<Vector4> colors;
+
+        inline void resize(std::size_t count) {
+            positions.resize(count, {.x = 0.0f, .y = 0.0f, .z = 0.0f});
+            velocities.resize(count, {.x = 0.0f, .y = 0.0f, .z = 0.0f});
+            forces.resize(count, {.x = 0.0f, .y = 0.0f, .z = 0.0f});
+            species.resize(count, 0);
+            colors.resize(count, {.x = 1.0f, .y = 1.0f, .z = 1.0f, .w = 1.0f});
+        }
+
+        [[nodiscard]] inline std::size_t size() const { return positions.size(); }
+    };
+
+    struct PotentialParams {
+        float rCut2;
+        float minR2;
+        float s6;
+    };
+
+    struct CellCoord {
+        int x;
+        int y;
+        int z;
+    };
+
+    void                  initEntities();
+    void                  resetSimulation();
+    void                  computeForces();
+    [[nodiscard]] Vector3 pairForce(const Vector3& r, float r2, const PotentialParams& params) const;
+    void                  applyPairForce(std::size_t i, std::size_t j, const PotentialParams& params);
+    void                  buildCellList(int nCells);
+    void                  interactSameCell(int i, const PotentialParams& params);
+    void interactNeighborCells(CellCoord cell, int nCells, int headAtom, const PotentialParams& params);
+    void resolveCellInteractions(int nCells, const PotentialParams& params);
+    void computeForcesDirect(const PotentialParams& params);
+    void integrate(float dt);
+    void renderImGui();
+
+    // Scene & View
+    Scene                 scene;
+    OrbitCamera*          camera    = nullptr;
+    InstancedEntity*      atomGroup = nullptr;
+    std::shared_ptr<Mesh> sphereMesh;
+
+    // Simulation State
+    std::size_t                                    numAtoms    = 100;
+    int                                            uiAtomCount = 100;
+    ParticleData                                   particles;
+    std::vector<Vector3>                           previousPositions;
+    std::vector<int>                               cellHead;
+    std::vector<int>                               nextAtom;
+    std::array<std::vector<CellCoord>, NUM_COLORS> colorCells;
+
+    // Simulation Parameters
+    float epsilon           = 1.0f;
+    float sigma             = 1.0f;
+    float atomRadius        = 0.25f;
+    float boxSize           = 4.5f;
+    float targetTemperature = 1.0f;
+    float damping           = 0.0f;
+
+    // Runtime Metrics & Timing
+    float currentTemperature   = 0.0f;
+    float currentKineticEnergy = 0.0f;
+    float elapsedTime          = 0.0f;
+    bool  isPaused             = false;
+};
+
+} // export
+
+MolecularDynamicsExample::MolecularDynamicsExample(std::size_t atomCount)
     : numAtoms(std::max<std::size_t>(1, atomCount)), uiAtomCount(static_cast<int>(numAtoms)) {}
 
-void MolecularDynamics::setAtomCount(std::size_t count) {
+void MolecularDynamicsExample::setAtomCount(std::size_t count) {
     numAtoms    = std::max<std::size_t>(1, count);
     uiAtomCount = static_cast<int>(numAtoms);
     if (sphereMesh != nullptr) {
@@ -24,7 +115,7 @@ void MolecularDynamics::setAtomCount(std::size_t count) {
     }
 }
 
-void MolecularDynamics::initEntities() {
+void MolecularDynamicsExample::initEntities() {
     Vector3 camTarget   = (camera != nullptr) ? camera->getTarget() : Vector3{.x = 0.0f, .y = 0.0f, .z = 0.0f};
     Vector3 camRot      = (camera != nullptr) ? camera->getRotation() : Vector3{.x = 0.0f, .y = 0.0f, .z = 0.0f};
     float   camDistance = (camera != nullptr) ? camera->getDistance() : 16.0f;
@@ -36,7 +127,7 @@ void MolecularDynamics::initEntities() {
     particles.resize(numAtoms);
 }
 
-void MolecularDynamics::onAttach() {
+void MolecularDynamicsExample::onAttach() {
     getApp()->setScene(&scene);
 
     sphereMesh = std::make_shared<Mesh>(
@@ -47,7 +138,7 @@ void MolecularDynamics::onAttach() {
     resetSimulation();
 }
 
-void MolecularDynamics::onDetach() {
+void MolecularDynamicsExample::onDetach() {
     if ((getApp() != nullptr) && getApp()->getScene() == &scene) {
         getApp()->setScene(nullptr);
     }
@@ -57,7 +148,7 @@ void MolecularDynamics::onDetach() {
     scene.clear();
 }
 
-void MolecularDynamics::resetSimulation() {
+void MolecularDynamicsExample::resetSimulation() {
     if ((atomGroup == nullptr) || atomGroup->getInstances().size() != numAtoms) {
         initEntities();
     }
@@ -128,13 +219,13 @@ void MolecularDynamics::resetSimulation() {
     computeForces();
 }
 
-Vector3 MolecularDynamics::pairForce(const Vector3& r, float r2, const PotentialParams& params) const {
+Vector3 MolecularDynamicsExample::pairForce(const Vector3& r, float r2, const PotentialParams& params) const {
     const float invR2   = 1.0f / std::max(r2, params.minR2);
     const float s6invR6 = params.s6 * invR2 * invR2 * invR2;
     return r * (24.0f * epsilon * invR2 * s6invR6 * ((2.0f * s6invR6) - 1.0f));
 }
 
-void MolecularDynamics::applyPairForce(std::size_t i, std::size_t j, const PotentialParams& params) {
+void MolecularDynamicsExample::applyPairForce(std::size_t i, std::size_t j, const PotentialParams& params) {
     Vector3 r  = particles.positions.at(i) - particles.positions.at(j);
     float   r2 = r.lengthSq();
     if (r2 > params.rCut2) {
@@ -146,7 +237,7 @@ void MolecularDynamics::applyPairForce(std::size_t i, std::size_t j, const Poten
     particles.forces.at(j) -= f;
 }
 
-void MolecularDynamics::buildCellList(int nCells) {
+void MolecularDynamicsExample::buildCellList(int nCells) {
     const int totalCells = nCells * nCells * nCells;
     cellHead.assign(static_cast<std::size_t>(totalCells), -1);
     nextAtom.resize(numAtoms, -1);
@@ -173,7 +264,7 @@ void MolecularDynamics::buildCellList(int nCells) {
     }
 }
 
-void MolecularDynamics::interactSameCell(int i, const PotentialParams& params) {
+void MolecularDynamicsExample::interactSameCell(int i, const PotentialParams& params) {
     for (int a = i; a != -1; a = nextAtom.at(static_cast<std::size_t>(a))) {
         for (int b = nextAtom.at(static_cast<std::size_t>(a)); b != -1; b = nextAtom.at(static_cast<std::size_t>(b))) {
             applyPairForce(static_cast<std::size_t>(a), static_cast<std::size_t>(b), params);
@@ -181,7 +272,9 @@ void MolecularDynamics::interactSameCell(int i, const PotentialParams& params) {
     }
 }
 
-void MolecularDynamics::interactNeighborCells(CellCoord cell, int nCells, int headAtom, const PotentialParams& params) {
+void MolecularDynamicsExample::interactNeighborCells(
+    CellCoord cell, int nCells, int headAtom, const PotentialParams& params
+) {
     static constexpr std::array<std::array<int, 3>, 13> NEIGHBOR_OFFSETS = {
         {
             {1, 0, 0},
@@ -223,7 +316,7 @@ void MolecularDynamics::interactNeighborCells(CellCoord cell, int nCells, int he
     }
 }
 
-void MolecularDynamics::resolveCellInteractions(int nCells, const PotentialParams& params) {
+void MolecularDynamicsExample::resolveCellInteractions(int nCells, const PotentialParams& params) {
     for (const auto& bucket : colorCells) {
         shark::exec::for_each(shark::exec::par, bucket, [this, nCells, &params](const CellCoord& cell) {
             int cIdx = cell.x + (nCells * (cell.y + (nCells * cell.z)));
@@ -236,7 +329,7 @@ void MolecularDynamics::resolveCellInteractions(int nCells, const PotentialParam
     }
 }
 
-void MolecularDynamics::computeForcesDirect(const PotentialParams& params) {
+void MolecularDynamicsExample::computeForcesDirect(const PotentialParams& params) {
     shark::exec::for_each_index(shark::exec::par, numAtoms, [this, &params](std::size_t i) {
         Vector3       accForce{.x = 0.0f, .y = 0.0f, .z = 0.0f};
         const Vector3 posI = particles.positions[i];
@@ -257,7 +350,7 @@ void MolecularDynamics::computeForcesDirect(const PotentialParams& params) {
     });
 }
 
-void MolecularDynamics::computeForces() {
+void MolecularDynamicsExample::computeForces() {
     const float rCut = 2.5f * sigma;
     const float s2   = sigma * sigma;
 
@@ -278,7 +371,7 @@ void MolecularDynamics::computeForces() {
     }
 }
 
-void MolecularDynamics::integrate(float dt) {
+void MolecularDynamicsExample::integrate(float dt) {
     const float halfDt     = 0.5f * dt;
     const float limit      = boxSize - atomRadius;
     const float dampFactor = (damping > 0.0f) ? std::max(0.0f, 1.0f - (damping * dt)) : 1.0f;
@@ -323,7 +416,7 @@ void MolecularDynamics::integrate(float dt) {
     });
 }
 
-void MolecularDynamics::onFixedUpdate(float /*fixedDt*/) {
+void MolecularDynamicsExample::onFixedUpdate(float /*fixedDt*/) {
     if (isPaused) {
         return;
     }
@@ -336,7 +429,7 @@ void MolecularDynamics::onFixedUpdate(float /*fixedDt*/) {
     }
 }
 
-void MolecularDynamics::onUpdate(float deltaTime) {
+void MolecularDynamicsExample::onUpdate(float deltaTime) {
     if (isPaused) {
         return;
     }
@@ -363,7 +456,7 @@ void MolecularDynamics::onUpdate(float deltaTime) {
     );
 }
 
-void MolecularDynamics::renderImGui() {
+void MolecularDynamicsExample::renderImGui() {
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(340, 360), ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
@@ -400,7 +493,7 @@ void MolecularDynamics::renderImGui() {
     ImGui::End();
 }
 
-void MolecularDynamics::onRender(Renderer& renderer) {
+void MolecularDynamicsExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
     renderImGui();
 }

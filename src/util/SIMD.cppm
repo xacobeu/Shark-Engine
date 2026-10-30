@@ -2,7 +2,7 @@ export module shark:util.SIMD;
 
 import std;
 
-namespace shark::simd::detail {
+namespace shark::simd {
 
 template <std::size_t N> struct RawVec;
 template <> struct RawVec<4> {
@@ -53,17 +53,17 @@ template <std::size_t N> [[nodiscard]] inline raw_vec_t<N> rsqrt(raw_vec_t<N> a)
     if constexpr (N == 4) {
         const raw_vec_t<4> y0        = __builtin_ia32_rsqrtps(a);
         const raw_vec_t<4> half_a_y0 = RawVec<4>::splat(0.5f) * a * y0;
-        return y0 * detail::fma<4>(-half_a_y0, y0, RawVec<4>::splat(1.5f));
+        return y0 * fma<4>(-half_a_y0, y0, RawVec<4>::splat(1.5f));
     }
 #endif
 #if defined(__AVX__)
     if constexpr (N == 8) {
         const raw_vec_t<8> y0        = __builtin_ia32_rsqrtps256(a);
         const raw_vec_t<8> half_a_y0 = RawVec<8>::splat(0.5f) * a * y0;
-        return y0 * detail::fma<8>(-half_a_y0, y0, RawVec<8>::splat(1.5f));
+        return y0 * fma<8>(-half_a_y0, y0, RawVec<8>::splat(1.5f));
     }
 #endif
-    return RawVec<N>::splat(1.0f) / detail::sqrt<N>(a);
+    return RawVec<N>::splat(1.0f) / sqrt<N>(a);
 }
 // NOLINTEND(portability-simd-intrinsics)
 
@@ -137,17 +137,17 @@ inline void transpose4x4(raw_vec_t<4>& c0, raw_vec_t<4>& c1, raw_vec_t<4>& c2, r
 #endif
 }
 
-} // namespace shark::simd::detail
+} // namespace shark::simd
 
 export {
 namespace shark::simd {
 
 template <std::size_t N> struct alignas(N * sizeof(float)) SimdVec {
-    using vec_t = detail::raw_vec_t<N>;
+    using vec_t = raw_vec_t<N>;
     vec_t v{};
 
     constexpr inline SimdVec() noexcept = default;
-    constexpr explicit inline SimdVec(float s) noexcept : v(detail::RawVec<N>::splat(s)) {}
+    constexpr explicit inline SimdVec(float s) noexcept : v(RawVec<N>::splat(s)) {}
     constexpr inline SimdVec(float x, float y, float z, float w) noexcept
         requires(N == 4)
         : v{x, y, z, w} {}
@@ -170,10 +170,10 @@ template <std::size_t N> struct alignas(N * sizeof(float)) SimdVec {
     [[nodiscard]] constexpr inline SimdVec operator/(const SimdVec& r) const noexcept { return SimdVec(v / r.v); }
 
     [[nodiscard]] constexpr inline SimdVec operator*(float s) const noexcept {
-        return SimdVec(v * detail::RawVec<N>::splat(s));
+        return SimdVec(v * RawVec<N>::splat(s));
     }
     [[nodiscard]] constexpr inline SimdVec operator/(float s) const noexcept {
-        return SimdVec(v / detail::RawVec<N>::splat(s));
+        return SimdVec(v / RawVec<N>::splat(s));
     }
 
     constexpr inline SimdVec& operator+=(const SimdVec& r) noexcept {
@@ -237,33 +237,33 @@ template <typename T> inline void store8(T* ptr, const float8& val) noexcept {
 }
 
 [[nodiscard]] constexpr inline float4 zero_w(const float4& a) noexcept {
-    return float4(detail::zero_w(a.v));
+    return float4(zero_w(a.v));
 }
 
 [[nodiscard]] constexpr inline float reduce_add(const float4& a) noexcept {
-    return detail::reduce_add4(a.v);
+    return reduce_add4(a.v);
 }
 
 [[nodiscard]] constexpr inline float reduce_add(const float8& a) noexcept {
-    return detail::reduce_add8(a.v);
+    return reduce_add8(a.v);
 }
 
 // {sum(a), sum(b), sum(c)} with the shuffle/add work shared through a partial 4x4 transpose.
 [[nodiscard]] inline std::array<float, 3> reduce_add3(const float8& a, const float8& b, const float8& c) noexcept {
-    return detail::reduce_add3(a.v, b.v, c.v);
+    return reduce_add3(a.v, b.v, c.v);
 }
 
 template <std::size_t N> [[nodiscard]] inline SimdVec<N> sqrt(const SimdVec<N>& a) noexcept {
-    return SimdVec<N>(detail::sqrt<N>(a.v));
+    return SimdVec<N>(sqrt<N>(a.v));
 }
 
 template <std::size_t N> [[nodiscard]] inline SimdVec<N> rsqrt(const SimdVec<N>& a) noexcept {
-    return SimdVec<N>(detail::rsqrt<N>(a.v));
+    return SimdVec<N>(rsqrt<N>(a.v));
 }
 
 template <std::size_t N>
 [[nodiscard]] inline SimdVec<N> fma(const SimdVec<N>& a, const SimdVec<N>& b, const SimdVec<N>& c) noexcept {
-    return SimdVec<N>(detail::fma<N>(a.v, b.v, c.v));
+    return SimdVec<N>(fma<N>(a.v, b.v, c.v));
 }
 
 // Same semantics as minps/maxps; compiles to them on x86 and to f32x4.pmin/pmax on wasm.
@@ -281,7 +281,7 @@ template <std::size_t N>
 }
 
 template <std::size_t N> [[nodiscard]] inline SimdVec<N> abs(const SimdVec<N>& a) noexcept {
-    return SimdVec<N>(detail::abs<N>(a.v));
+    return SimdVec<N>(abs<N>(a.v));
 }
 
 [[nodiscard]] inline float reduce_max(const float4& a) noexcept {
@@ -302,11 +302,11 @@ template <std::size_t N> [[nodiscard]] inline SimdVec<N> abs(const SimdVec<N>& a
 }
 
 [[nodiscard]] constexpr inline float4 cross3(const float4& a, const float4& b) noexcept {
-    return float4(detail::cross3(a.v, b.v));
+    return float4(cross3(a.v, b.v));
 }
 
 inline void transpose4x4(float4& c0, float4& c1, float4& c2, float4& c3) noexcept {
-    detail::transpose4x4(c0.v, c1.v, c2.v, c3.v);
+    transpose4x4(c0.v, c1.v, c2.v, c3.v);
 }
 
 } // namespace shark::simd

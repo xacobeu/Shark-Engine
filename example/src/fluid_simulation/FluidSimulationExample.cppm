@@ -2,16 +2,72 @@ module;
 
 #include "imgui.h"
 
-module examples:fluid_simulation.FluidSim.impl;
+export module examples.fluid_simulation;
 
 import std;
 
-import :fluid_simulation.FluidSim;
-import :fluid_simulation.Particle;
+import examples.fluid_simulation.particle;
 
 import shark;
 
 using namespace shark;
+
+export {
+class FluidSimulationExample : public Layer {
+public:
+    static constexpr float   PARTICLE_RADIUS = 0.05f;
+    static constexpr float   GRAVITY         = 9.8f;
+    static constexpr Vector3 BOUNDS          = {4.0f, 4.0f, 4.0f};
+    static constexpr float   DAMPING         = 0.9f;
+
+    enum class SpawnPreset : std::uint8_t {
+        Waves,
+        CenteredBlock,
+    };
+
+    void onAttach() override;
+    void onDetach() override;
+    void onUpdate(float deltaTime) override;
+    void onRender(Renderer& renderer) override;
+
+    void resetSimulation();
+    void resetBox();
+
+private:
+    SpawnPreset currentPreset = SpawnPreset::Waves;
+    void        renderImGui();
+
+    Scene            scene;
+    OrbitCamera*     camera         = nullptr;
+    InstancedEntity* particleGroup  = nullptr;
+    Entity*          boxFrameEntity = nullptr;
+
+    // Box tilt dynamics and force state
+    Vector3 boxRot{0.0f, 0.0f, 0.0f};    // in degrees (pitch X, yaw Y, roll Z)
+    Vector3 boxAngVel{0.0f, 0.0f, 0.0f}; // in deg/s
+    Vector3 boxAngAcc{0.0f, 0.0f, 0.0f};
+    Vector3 prevBoxAngVel{0.0f, 0.0f, 0.0f};
+    Vector3 boxTargetRot{0.0f, 0.0f, 0.0f};
+
+    bool   isDraggingBox   = false;
+    double lastMouseX      = 0.0;
+    double lastMouseY      = 0.0;
+    float  tiltSensitivity = 0.25f;
+
+    int   currentParticleCount = 10000;
+    int   uiParticleCount      = 10000;
+    bool  isPaused             = false;
+    float gravity              = 9.8f;
+    float restitution          = 0.25f;
+    float viscosity            = 0.018f;
+    float relaxation           = 0.40f;
+    float friction             = 0.0f;
+
+    std::vector<Particle> particles;
+    SpatialHashGrid       grid;
+};
+
+} // export
 
 namespace {
 inline float randomFloat() {
@@ -31,7 +87,7 @@ inline Vector4 speedToColor(float speed, float maxSpeed = 8.0f) {
 }
 } // namespace
 
-void FluidSim::resetBox() {
+void FluidSimulationExample::resetBox() {
     boxRot        = {0.0f, 0.0f, 0.0f};
     boxAngVel     = {0.0f, 0.0f, 0.0f};
     boxAngAcc     = {0.0f, 0.0f, 0.0f};
@@ -44,7 +100,7 @@ void FluidSim::resetBox() {
     }
 }
 
-void FluidSim::resetSimulation() {
+void FluidSimulationExample::resetSimulation() {
     resetBox();
 
     auto& instanceData = particleGroup->getInstancesMutable();
@@ -52,28 +108,28 @@ void FluidSim::resetSimulation() {
     instanceData.resize(static_cast<std::size_t>(currentParticleCount));
 
     const float spacing = PARTICLE_RADIUS * 2.15f;
-    const float halfX   = (BOUNDS.x * 0.5f) - (PARTICLE_RADIUS * 1.5f);
+    const float halfZ   = (BOUNDS.z * 0.5f) - (PARTICLE_RADIUS * 1.5f);
     const float floorY  = -(BOUNDS.y * 0.5f) + (PARTICLE_RADIUS * 1.5f);
 
     if (currentPreset == SpawnPreset::Waves) {
-        const float maxDepthZ = BOUNDS.z * 0.85f;
-        int         nz        = std::max(1, static_cast<int>(std::floor(maxDepthZ / spacing)));
-        int         remaining = (currentParticleCount + nz - 1) / nz;
-        int         nx = std::max(1, static_cast<int>(std::round(std::sqrt(static_cast<float>(remaining) / 1.6f))));
-        nx             = std::min(nx, std::max(1, static_cast<int>((BOUNDS.x * 0.40f) / spacing)));
-        int ny         = (remaining + nx - 1) / nx;
+        const float maxDepthX = BOUNDS.x * 0.85f;
+        int         nx        = std::max(1, static_cast<int>(std::floor(maxDepthX / spacing)));
+        int         remaining = (currentParticleCount + nx - 1) / nx;
+        int         nz = std::max(1, static_cast<int>(std::round(std::sqrt(static_cast<float>(remaining) / 1.6f))));
+        nz             = std::min(nz, std::max(1, static_cast<int>((BOUNDS.z * 0.40f) / spacing)));
+        int ny         = (remaining + nz - 1) / nz;
 
-        const float startX  = -halfX;
+        const float startZ  = halfZ;
         const float startY  = floorY;
-        const float offsetZ = (static_cast<float>(nz - 1) * 0.5f) * spacing;
+        const float offsetX = (static_cast<float>(nx - 1) * 0.5f) * spacing;
 
         int particleIdx = 0;
         for (int iy = 0; iy < ny && particleIdx < currentParticleCount; ++iy) {
-            for (int ix = 0; ix < nx && particleIdx < currentParticleCount; ++ix) {
-                for (int iz = 0; iz < nz && particleIdx < currentParticleCount; ++iz) {
-                    float x = startX + (static_cast<float>(ix) * spacing);
+            for (int iz = 0; iz < nz && particleIdx < currentParticleCount; ++iz) {
+                for (int ix = 0; ix < nx && particleIdx < currentParticleCount; ++ix) {
+                    float x = (static_cast<float>(ix) * spacing) - offsetX;
                     float y = startY + (static_cast<float>(iy) * spacing);
-                    float z = (static_cast<float>(iz) * spacing) - offsetZ;
+                    float z = startZ - (static_cast<float>(iz) * spacing);
 
                     float jitterX = (randomFloat() - 0.5f) * (PARTICLE_RADIUS * 0.08f);
                     float jitterZ = (randomFloat() - 0.5f) * (PARTICLE_RADIUS * 0.08f);
@@ -114,7 +170,7 @@ void FluidSim::resetSimulation() {
     }
 }
 
-void FluidSim::onAttach() {
+void FluidSimulationExample::onAttach() {
     getApp()->setScene(&scene);
 
     camera = scene.add<OrbitCamera>()->setDistance(10.0f);
@@ -135,7 +191,7 @@ void FluidSim::onAttach() {
     grid.init(BOUNDS, PARTICLE_RADIUS * 2.0f);
 }
 
-void FluidSim::onDetach() {
+void FluidSimulationExample::onDetach() {
     if ((getApp() != nullptr) && getApp()->getScene() == &scene) {
         getApp()->setScene(nullptr);
     }
@@ -146,7 +202,7 @@ void FluidSim::onDetach() {
     scene.clear();
 }
 
-void FluidSim::onUpdate(float deltaTime) {
+void FluidSimulationExample::onUpdate(float deltaTime) {
     float dt = std::min(deltaTime, 0.02f);
     if (dt <= 0.0f) {
         return;
@@ -283,7 +339,7 @@ void FluidSim::onUpdate(float deltaTime) {
     );
 }
 
-void FluidSim::renderImGui() {
+void FluidSimulationExample::renderImGui() {
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(340, 320), ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
@@ -323,7 +379,7 @@ void FluidSim::renderImGui() {
     ImGui::End();
 }
 
-void FluidSim::onRender(Renderer& renderer) {
+void FluidSimulationExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
     renderImGui();
 }
