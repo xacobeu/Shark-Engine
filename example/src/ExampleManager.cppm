@@ -278,18 +278,6 @@ void ExampleManager::renderTopBar() {
     }
     const bool compact = fullWidth > ImGui::GetWindowWidth();
 
-    auto pushButtonColors = [](bool active) {
-        if (active) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.45f, 0.85f, 0.90f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.55f, 0.95f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.20f, 0.50f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.30f, 0.35f, 0.70f));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.75f, 0.80f, 1.0f));
-        }
-    };
-
     auto beginDropdown = [&style](std::string_view label, std::string_view id) {
         ImDrawList* barDrawList = ImGui::GetWindowDrawList();
         const bool  open        = ImGui::BeginMenu(std::format("{}     ###{}", label, id).c_str());
@@ -323,21 +311,15 @@ void ExampleManager::renderTopBar() {
     } else {
         // Quick single-click buttons for immediate switching
         for (const auto& [type, label] : quickButtons) {
-            pushButtonColors(currentType == type);
             if (ImGui::SmallButton(label)) {
                 switchExample(type);
             }
-            ImGui::PopStyleColor(3);
             ImGui::SameLine();
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.20f, 0.22f, 0.50f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.80f, 0.35f, 0.15f, 0.80f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
         if (ImGui::SmallButton(reloadLabel)) {
             reloadCurrent();
         }
-        ImGui::PopStyleColor(3);
         ImGui::SameLine();
     }
 
