@@ -60,6 +60,40 @@ void SetupForestGreenStyle() {
     style.GrabRounding      = 4.0f;
     style.LogSliderDeadzone = 4.0f;
     style.TabRounding       = 4.0f;
+
+    // Colors.
+    auto white = [](float alpha) { return ImVec4(1.0f, 1.0f, 1.0f, alpha); };
+
+    ImVec4* colors                              = style.Colors;
+    colors[ImGuiCol_FrameBg]                    = white(0.07f);
+    colors[ImGuiCol_FrameBgHovered]             = white(0.12f);
+    colors[ImGuiCol_FrameBgActive]              = white(0.18f);
+    colors[ImGuiCol_TitleBgActive]              = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);
+    colors[ImGuiCol_CheckMark]                  = white(1.0f);
+    colors[ImGuiCol_CheckboxSelectedBg]         = white(0.12f);
+    colors[ImGuiCol_SliderGrab]                 = white(0.40f);
+    colors[ImGuiCol_SliderGrabActive]           = white(0.60f);
+    colors[ImGuiCol_Button]                     = white(0.12f);
+    colors[ImGuiCol_ButtonHovered]              = white(0.22f);
+    colors[ImGuiCol_ButtonActive]               = white(0.32f);
+    colors[ImGuiCol_Header]                     = white(0.12f);
+    colors[ImGuiCol_HeaderHovered]              = white(0.22f);
+    colors[ImGuiCol_HeaderActive]               = white(0.32f);
+    colors[ImGuiCol_SeparatorHovered]           = white(0.50f);
+    colors[ImGuiCol_SeparatorActive]            = white(0.80f);
+    colors[ImGuiCol_ResizeGrip]                 = white(0.15f);
+    colors[ImGuiCol_ResizeGripHovered]          = white(0.40f);
+    colors[ImGuiCol_ResizeGripActive]           = white(0.70f);
+    colors[ImGuiCol_Tab]                        = white(0.08f);
+    colors[ImGuiCol_TabHovered]                 = white(0.22f);
+    colors[ImGuiCol_TabSelected]                = white(0.16f);
+    colors[ImGuiCol_TabSelectedOverline]        = white(1.0f);
+    colors[ImGuiCol_TabDimmedSelected]          = white(0.10f);
+    colors[ImGuiCol_TabDimmedSelectedOverline]  = white(0.50f);
+    colors[ImGuiCol_DockingPreview]             = white(0.30f);
+    colors[ImGuiCol_TextLink]                   = white(0.90f);
+    colors[ImGuiCol_TextSelectedBg]             = white(0.25f);
+    colors[ImGuiCol_NavCursor]                  = white(1.0f);
 }
 
 export class ExampleManager : public Layer {
@@ -342,7 +376,7 @@ void ExampleManager::renderTopBar() {
     const float        rightX    = ImGui::GetWindowWidth() - ImGui::CalcTextSize(rightText.c_str()).x - 18.0f;
     if (rightX > ImGui::GetCursorPosX()) {
         ImGui::SetCursorPosX(rightX);
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s", rightText.c_str());
+        ImGui::TextUnformatted(rightText.c_str());
     }
 
     ImGui::EndMainMenuBar();
