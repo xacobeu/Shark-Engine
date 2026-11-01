@@ -33,7 +33,6 @@
             touch-action: none;
         }
 
-        /* On-screen error log, so failures are visible on phones without devtools. */
         #errors {
             display: none;
             position: fixed;
@@ -57,7 +56,6 @@
     <div id="errors" title="Tap to close" onclick="this.style.display = 'none'"></div>
 
     <script type="text/javascript">
-        // Show errors on top of the canvas (first one also prints browser/environment info).
         function showError(text) {
             var box = document.getElementById('errors');
             if (box.style.display !== 'block') {
@@ -71,9 +69,6 @@
             }
             box.textContent += text + '\n';
         }
-        // iOS Safari has no Pointer Lock API, but Emscripten's GLFW calls it whenever
-        // the cursor mode changes (ImGui does that every frame), which throws and stops
-        // the main loop. Make the calls harmless no-ops where the API is missing.
         if (!document.exitPointerLock) {
             document.exitPointerLock = function () { };
         }
@@ -81,10 +76,8 @@
             HTMLCanvasElement.prototype.requestPointerLock = function () { };
         }
 
-        // Pinch to zoom: GLFW only turns one finger into a mouse, so turn the change in
-        // distance between two fingers into mouse-wheel steps, which the cameras use for zoom.
         (function () {
-            var PIXELS_PER_STEP = 12;  // finger movement per wheel notch
+            var PIXELS_PER_STEP = 12;
             var lastDistance = 0;
             var pending = 0;
 
@@ -92,8 +85,6 @@
                 return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
             }
 
-            // Capture on window runs before GLFW's canvas listeners, so two-finger moves
-            // can be kept from also rotating the camera like a one-finger drag.
             window.addEventListener('touchstart', function (e) {
                 if (e.touches.length === 2) {
                     lastDistance = distance(e.touches);
@@ -112,7 +103,6 @@
                 var steps = Math.trunc(pending / PIXELS_PER_STEP);
                 if (steps !== 0) {
                     pending -= steps * PIXELS_PER_STEP;
-                    // Fingers apart = wheel up = zoom in. 100px is one notch to Emscripten.
                     Module.canvas.dispatchEvent(new WheelEvent('wheel', {
                         deltaY: -100 * steps,
                         deltaMode: WheelEvent.DOM_DELTA_PIXEL,
@@ -140,7 +130,6 @@
             printErr: function (text) {
                 if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                 console.error(text);
-                // stderr also carries harmless warnings; only surface what looks fatal.
                 if (/error|abort|exception|fail|out of memory|unreachable|not supported/i.test(text)) showError(text);
             },
             onAbort: function (what) {

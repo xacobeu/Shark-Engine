@@ -196,8 +196,6 @@ bool Window::isKeyboardCaptured() noexcept {
 
 void Window::_mouseButtonCallback(GLFWwindow* win, int button, int action, int mods) {
 #ifdef __EMSCRIPTEN__
-    // Emscripten's GLFW moves the cursor on touchstart without calling the cursor callback,
-    // so without this a tap would click wherever ImGui last saw the pointer.
     if (action == GLFW_PRESS) {
         double x = 0.0;
         double y = 0.0;

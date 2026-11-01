@@ -9,13 +9,13 @@ import std;
 import examples.fast_multipole_method.adaptive_fmm;
 import examples.fast_multipole_method.body;
 
-import examples.ui;
+import examples.base;
 import shark;
 
 using namespace shark;
 
 export {
-class FastMultipoleMethodExample : public Layer {
+class FastMultipoleMethodExample : public examples::Example {
 public:
     static constexpr std::size_t DEFAULT_NUM_PARTICLES = 10000;
     static constexpr Vector3     BOUNDS                = {200.0f, 200.0f, 200.0f};
@@ -27,6 +27,7 @@ public:
     void onFixedUpdate(float fixedDt) override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
+    void renderControls() override;
 
     void resetSimulation(std::size_t count);
 
@@ -53,8 +54,6 @@ private:
     static void generateUniformDistribution(
         std::span<Body> particles, std::span<InstanceData> instanceData, const UniformConfig& cfg
     );
-
-    void                renderImGui();
     void                solve();
     [[nodiscard]] float measureColorMaxSpeed() const;
 
@@ -216,11 +215,7 @@ void FastMultipoleMethodExample::onUpdate(float deltaTime) {
     );
 }
 
-void FastMultipoleMethodExample::renderImGui() {
-    if (!examples::beginControls(ImVec2(340.0f, 340.0f))) {
-        return;
-    }
-
+void FastMultipoleMethodExample::renderControls() {
     ImGui::SliderInt("Particles", &uiParticleCount, 500, 100000);
     if (ImGui::IsItemDeactivatedAfterEdit() && std::cmp_not_equal(uiParticleCount, currentParticleCount)) {
         resetSimulation(static_cast<std::size_t>(uiParticleCount));
@@ -273,13 +268,10 @@ void FastMultipoleMethodExample::renderImGui() {
     ImGui::Separator();
     ImGui::Text("Octree Nodes: %zu", fmm.getNodeCount());
     ImGui::Text("FMM Solve: %.2f ms", lastFmmTimeMs);
-
-    ImGui::End();
 }
 
 void FastMultipoleMethodExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
-    renderImGui();
 }
 
 void FastMultipoleMethodExample::generateKuzminDisk(

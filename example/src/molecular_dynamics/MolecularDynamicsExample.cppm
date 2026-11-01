@@ -6,13 +6,13 @@ export module examples.molecular_dynamics;
 
 import std;
 
-import examples.ui;
+import examples.base;
 import shark;
 
 using namespace shark;
 
 export {
-class MolecularDynamicsExample : public Layer {
+class MolecularDynamicsExample : public examples::Example {
 public:
     explicit MolecularDynamicsExample(std::size_t atomCount = 100);
 
@@ -21,6 +21,7 @@ public:
     void onFixedUpdate(float fixedDt) override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
+    void renderControls() override;
 
     void                             setAtomCount(std::size_t count);
     [[nodiscard]] inline std::size_t getAtomCount() const { return numAtoms; }
@@ -70,7 +71,6 @@ private:
     void resolveCellInteractions(int nCells, const PotentialParams& params);
     void computeForcesDirect(const PotentialParams& params);
     void integrate(float dt);
-    void renderImGui();
 
     // Scene & View
     Scene                 scene;
@@ -457,11 +457,7 @@ void MolecularDynamicsExample::onUpdate(float deltaTime) {
     );
 }
 
-void MolecularDynamicsExample::renderImGui() {
-    if (!examples::beginControls(ImVec2(340.0f, 360.0f))) {
-        return;
-    }
-
+void MolecularDynamicsExample::renderControls() {
     if (ImGui::SliderInt("Particle Count", &uiAtomCount, 1, 2000)) {
         uiAtomCount = std::clamp(uiAtomCount, 1, 2000);
     }
@@ -490,11 +486,8 @@ void MolecularDynamicsExample::renderImGui() {
     ImGui::SliderFloat("Sigma (Atom Size)", &sigma, 0.4f, 1.4f);
     ImGui::SliderFloat("Damping", &damping, 0.0f, 0.2f);
     ImGui::SliderFloat("Box Size", &boxSize, 2.5f, 12.0f);
-
-    ImGui::End();
 }
 
 void MolecularDynamicsExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
-    renderImGui();
 }

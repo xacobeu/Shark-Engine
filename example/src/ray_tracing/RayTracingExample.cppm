@@ -6,13 +6,13 @@ export module examples.ray_tracing;
 
 import std;
 
-import examples.ui;
+import examples.base;
 import shark;
 
 using namespace shark;
 
 export {
-class RayTracingExample : public Layer {
+class RayTracingExample : public examples::Example {
 public:
     static constexpr int MAX_SPHERES = 128;
 
@@ -31,6 +31,7 @@ public:
     void onDetach() override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
+    void renderControls() override;
 
     void initSpheres();
 
@@ -283,11 +284,9 @@ void RayTracingExample::onRender(Renderer&) {
     device->setUniforms(1, sphereData);
     device->setVertexBuffer(0, *quadVbo);
     device->draw(6);
+}
 
-    if (!examples::beginControls(ImVec2(360.0f, 480.0f))) {
-        return;
-    }
-
+void RayTracingExample::renderControls() {
     ImGui::Text("Shiny Balls Settings");
     ImGui::SliderInt("Ball Count", &sphereCount, 1, MAX_SPHERES);
     if (ImGui::Button(" Re-roll Random Balls ")) {
@@ -318,6 +317,4 @@ void RayTracingExample::onRender(Renderer&) {
         ImGui::ColorEdit3("Ball Color", &spheres[0].color.x);
         ImGui::SliderFloat("Shininess", &spheres[0].shininess, 0.0f, 1.0f);
     }
-
-    ImGui::End();
 }

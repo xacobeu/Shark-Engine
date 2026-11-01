@@ -9,13 +9,13 @@ import std;
 import examples.fluid_simulation.particle;
 import examples.fluid_simulation.pbf;
 
-import examples.ui;
+import examples.base;
 import shark;
 
 using namespace shark;
 
 export {
-class FluidSimulationExample : public Layer {
+class FluidSimulationExample : public examples::Example {
 public:
     static constexpr float   PARTICLE_RADIUS = 0.05f;
     static constexpr float   REST_SPACING    = PARTICLE_RADIUS * 2.0f;
@@ -38,13 +38,13 @@ public:
     void onDetach() override;
     void onUpdate(float deltaTime) override;
     void onRender(Renderer& renderer) override;
+    void renderControls() override;
 
     void resetSimulation();
     void resetBox();
 
 private:
     SpawnPreset currentPreset = SpawnPreset::Waves;
-    void        renderImGui();
 
     Scene            scene;
     OrbitCamera*     camera         = nullptr;
@@ -355,11 +355,7 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
     );
 }
 
-void FluidSimulationExample::renderImGui() {
-    if (!examples::beginControls(ImVec2(340.0f, 320.0f))) {
-        return;
-    }
-
+void FluidSimulationExample::renderControls() {
     if (ImGui::SliderInt("Particles", &uiParticleCount, 500, 50000)) {
         uiParticleCount = std::clamp(uiParticleCount, 100, 100000);
     }
@@ -396,11 +392,8 @@ void FluidSimulationExample::renderImGui() {
     ImGui::SliderFloat("Artificial Pressure", &fluidSettings.tensileStrength, 0.0f, 0.2f, "%.3f");
     ImGui::SliderFloat("Vorticity", &fluidSettings.vorticity, 0.0f, 0.5f, "%.3f");
     ImGui::SliderFloat("Viscosity", &fluidSettings.viscosity, 0.0f, 0.2f, "%.3f");
-
-    ImGui::End();
 }
 
 void FluidSimulationExample::onRender(Renderer& renderer) {
     renderer.render(scene, getApp()->getWidth(), getApp()->getHeight());
-    renderImGui();
 }

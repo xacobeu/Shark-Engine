@@ -15,7 +15,7 @@ import examples.fluid_simulation;
 import examples.molecular_dynamics;
 import examples.ray_tracing;
 import examples.spinning_cube;
-import examples.ui;
+import examples.base;
 
 import shark;
 
@@ -88,28 +88,25 @@ private:
     void                          renderTopBar();
     void                          processHotkeys();
     void                          applyPendingSwitch();
-    static std::unique_ptr<Layer> createExample(ExampleType type);
+    static std::unique_ptr<examples::Example> createExample(ExampleType type);
 
     ExampleType currentType = ExampleType::FluidSimulation;
     ExampleType pendingType = ExampleType::FluidSimulation;
     bool        needsReload = false;
 
-    std::unique_ptr<Layer> activeExample;
+    std::unique_ptr<examples::Example> activeExample;
 };
 
 ExampleManager::ExampleManager() {
     SetupForestGreenStyle();
 
 #ifdef __EMSCRIPTEN__
-    // Touch screens: bigger hit areas, and start with the Controls panel hidden so the
-    // simulation gets the whole (small) screen. It can be opened from the top bar.
     const bool touchScreen = EM_ASM_INT({ return matchMedia('(pointer: coarse)').matches ? 1 : 0; }) != 0;
     if (touchScreen) {
         ImGuiStyle& style       = ImGui::GetStyle();
         style.TouchExtraPadding = ImVec2(4.0f, 4.0f);
         style.GrabMinSize       = 20.0f;
         style.ScrollbarSize     = 20.0f;
-        examples::controlsVisible = false;
     }
 #endif
 }
@@ -135,7 +132,7 @@ std::string_view ExampleManager::getExampleName(ExampleType type) noexcept {
     }
 }
 
-std::unique_ptr<Layer> ExampleManager::createExample(ExampleType type) {
+std::unique_ptr<examples::Example> ExampleManager::createExample(ExampleType type) {
     switch (type) {
     case ExampleType::FluidSimulation:
         return std::make_unique<FluidSimulationExample>();
@@ -274,9 +271,7 @@ void ExampleManager::renderTopBar() {
     const std::string full  = std::format("{} | {:.1f} FPS ({:.2f} ms)", getExampleName(currentType), fps, ms);
     const std::string brief = std::format("{:.0f} FPS", fps);
 
-    // Use the full row of buttons only when it fits next to the status text;
-    // otherwise (phones, narrow windows) fold the examples into a dropdown.
-    float fullWidth = ImGui::GetCursorPosX() + buttonWidth(reloadLabel) + buttonWidth(controlsLabel) +
+    float fullWidth = ImGui::GetCursorPosX() + buttonWidth(reloadLabel) + buttonWidth("Controls     ") +
                       ImGui::CalcTextSize(full.c_str()).x + 18.0f;
     for (const auto& [type, label] : quickButtons) {
         fullWidth += buttonWidth(label);
@@ -295,9 +290,25 @@ void ExampleManager::renderTopBar() {
         }
     };
 
+    auto beginDropdown = [&style](std::string_view label, std::string_view id) {
+        ImDrawList* barDrawList = ImGui::GetWindowDrawList();
+        const bool  open        = ImGui::BeginMenu(std::format("{}     ###{}", label, id).c_str());
+
+        const ImVec2 itemMin = ImGui::GetItemRectMin();
+        const ImVec2 itemMax = ImGui::GetItemRectMax();
+        const float  half    = ImGui::GetFontSize() * 0.22f;
+        const ImVec2 tip(itemMax.x - (style.ItemSpacing.x * 0.5f) - half - 4.0f, (itemMin.y + itemMax.y) * 0.5f);
+        const ImVec2 left(tip.x - half, tip.y - (half * 0.5f));
+        const ImVec2 right(tip.x + half, tip.y - (half * 0.5f));
+        const ImVec2 bottom(tip.x, tip.y + (half * 0.6f));
+        const ImU32  color = ImGui::GetColorU32(ImGuiCol_Text);
+        barDrawList->AddLine(left, bottom, color, 2.0f);
+        barDrawList->AddLine(bottom, right, color, 2.0f);
+        return open;
+    };
+
     if (compact) {
-        // One menu named after the current example, listing all of them plus reload.
-        if (ImGui::BeginMenu(std::format("{}###examples", getExampleName(currentType)).c_str())) {
+        if (beginDropdown(getExampleName(currentType), "examples")) {
             for (const auto& [type, label] : quickButtons) {
                 if (ImGui::MenuItem(getExampleName(type).data(), nullptr, currentType == type)) {
                     switchExample(type);
@@ -330,14 +341,21 @@ void ExampleManager::renderTopBar() {
         ImGui::SameLine();
     }
 
-    pushButtonColors(examples::controlsVisible);
-    if (ImGui::SmallButton(controlsLabel)) {
-        examples::controlsVisible = !examples::controlsVisible;
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(0.0f, 0.0f), ImVec2(viewport->Size.x - 20.0f, viewport->Size.y - ImGui::GetFrameHeight() - 10.0f)
+    );
+    if (beginDropdown(controlsLabel, "controls")) {
+        if (activeExample && activeExample->hasControls()) {
+            ImGui::PushItemWidth(std::clamp(viewport->Size.x * 0.4f, 120.0f, 220.0f));
+            activeExample->renderControls();
+            ImGui::PopItemWidth();
+        } else {
+            ImGui::TextDisabled("No controls for this example");
+        }
+        ImGui::EndMenu();
     }
-    ImGui::PopStyleColor(3);
-    ImGui::SameLine();
 
-    // Right-aligned status and framerate, shortened or dropped when there's no room.
     const std::string& rightText = compact ? brief : full;
     const float        rightX    = ImGui::GetWindowWidth() - ImGui::CalcTextSize(rightText.c_str()).x - 18.0f;
     if (rightX > ImGui::GetCursorPosX()) {

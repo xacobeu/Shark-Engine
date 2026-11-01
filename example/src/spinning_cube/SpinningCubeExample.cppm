@@ -2,15 +2,18 @@ export module examples.spinning_cube;
 
 import std;
 
+import examples.base;
 import shark;
 
 export {
-class SpinningCubeExample : public shark::Layer {
+class SpinningCubeExample : public examples::Example {
 public:
     void onAttach() override;
     void onDetach() override;
     void onUpdate(float deltaTime) override;
     void onRender(shark::Renderer& renderer) override;
+
+    [[nodiscard]] bool hasControls() const override { return false; }
 
 private:
     shark::Scene        scene;
