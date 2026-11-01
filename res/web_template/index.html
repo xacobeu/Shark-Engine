@@ -30,6 +30,7 @@
             outline: none;
             border: none;
             cursor: crosshair;
+            touch-action: none;
         }
 
         /* On-screen error log, so failures are visible on phones without devtools. */
@@ -74,11 +75,55 @@
         // the cursor mode changes (ImGui does that every frame), which throws and stops
         // the main loop. Make the calls harmless no-ops where the API is missing.
         if (!document.exitPointerLock) {
-            document.exitPointerLock = function () {};
+            document.exitPointerLock = function () { };
         }
         if (!HTMLCanvasElement.prototype.requestPointerLock) {
-            HTMLCanvasElement.prototype.requestPointerLock = function () {};
+            HTMLCanvasElement.prototype.requestPointerLock = function () { };
         }
+
+        // Pinch to zoom: GLFW only turns one finger into a mouse, so turn the change in
+        // distance between two fingers into mouse-wheel steps, which the cameras use for zoom.
+        (function () {
+            var PIXELS_PER_STEP = 12;  // finger movement per wheel notch
+            var lastDistance = 0;
+            var pending = 0;
+
+            function distance(touches) {
+                return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+            }
+
+            // Capture on window runs before GLFW's canvas listeners, so two-finger moves
+            // can be kept from also rotating the camera like a one-finger drag.
+            window.addEventListener('touchstart', function (e) {
+                if (e.touches.length === 2) {
+                    lastDistance = distance(e.touches);
+                    pending = 0;
+                }
+            }, { capture: true, passive: true });
+
+            window.addEventListener('touchmove', function (e) {
+                if (e.touches.length !== 2 || e.target !== Module.canvas) return;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                var d = distance(e.touches);
+                pending += d - lastDistance;
+                lastDistance = d;
+                var steps = Math.trunc(pending / PIXELS_PER_STEP);
+                if (steps !== 0) {
+                    pending -= steps * PIXELS_PER_STEP;
+                    // Fingers apart = wheel up = zoom in. 100px is one notch to Emscripten.
+                    Module.canvas.dispatchEvent(new WheelEvent('wheel', {
+                        deltaY: -100 * steps,
+                        deltaMode: WheelEvent.DOM_DELTA_PIXEL,
+                        clientX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                        clientY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+                        bubbles: true,
+                        cancelable: true,
+                    }));
+                }
+            }, { capture: true, passive: false });
+        })();
 
         window.addEventListener('unhandledrejection', function (e) {
             var r = e.reason;
@@ -135,7 +180,7 @@
                 } else {
                     fetch(window.location.href, { method: 'POST', body: '^exit^0', keepalive: true });
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
         window.addEventListener('pagehide', notifyEmrunExit);
     </script>

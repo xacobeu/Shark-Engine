@@ -2,6 +2,10 @@ module;
 
 #include "imgui.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 export module examples.manager;
 
 import std;
@@ -11,6 +15,7 @@ import examples.fluid_simulation;
 import examples.molecular_dynamics;
 import examples.ray_tracing;
 import examples.spinning_cube;
+import examples.ui;
 
 import shark;
 
@@ -94,6 +99,19 @@ private:
 
 ExampleManager::ExampleManager() {
     SetupForestGreenStyle();
+
+#ifdef __EMSCRIPTEN__
+    // Touch screens: bigger hit areas, and start with the Controls panel hidden so the
+    // simulation gets the whole (small) screen. It can be opened from the top bar.
+    const bool touchScreen = EM_ASM_INT({ return matchMedia('(pointer: coarse)').matches ? 1 : 0; }) != 0;
+    if (touchScreen) {
+        ImGuiStyle& style       = ImGui::GetStyle();
+        style.TouchExtraPadding = ImVec2(4.0f, 4.0f);
+        style.GrabMinSize       = 20.0f;
+        style.ScrollbarSize     = 20.0f;
+        examples::controlsVisible = false;
+    }
+#endif
 }
 
 ExampleManager::~ExampleManager() {
@@ -235,10 +253,38 @@ void ExampleManager::renderTopBar() {
         return;
     }
 
-    // Quick single-click buttons for immediate switching
-    auto renderQuickButton = [this](ExampleType type, const char* label) {
-        bool isActive = (currentType == type);
-        if (isActive) {
+    static constexpr std::array<std::pair<ExampleType, const char*>, 5> quickButtons{{
+        {ExampleType::FluidSimulation, "Fluid"},
+        {ExampleType::FastMultipoleMethod, "FMM"},
+        {ExampleType::MolecularDynamics, "Molecular"},
+        {ExampleType::SpinningCube, "Cube"},
+        {ExampleType::RayTracing, "Raytracer"},
+    }};
+    static constexpr const char* reloadLabel   = "Reload (R)";
+    static constexpr const char* controlsLabel = "Controls";
+
+    const ImGuiStyle& style       = ImGui::GetStyle();
+    auto              buttonWidth = [&style](const char* label) {
+        return ImGui::CalcTextSize(label).x + (2.0f * style.FramePadding.x) + style.ItemSpacing.x;
+    };
+
+    ImGuiIO&          io    = ImGui::GetIO();
+    const float       fps   = io.Framerate;
+    const float       ms    = (fps > 0.0f) ? (1000.0f / fps) : 0.0f;
+    const std::string full  = std::format("{} | {:.1f} FPS ({:.2f} ms)", getExampleName(currentType), fps, ms);
+    const std::string brief = std::format("{:.0f} FPS", fps);
+
+    // Use the full row of buttons only when it fits next to the status text;
+    // otherwise (phones, narrow windows) fold the examples into a dropdown.
+    float fullWidth = ImGui::GetCursorPosX() + buttonWidth(reloadLabel) + buttonWidth(controlsLabel) +
+                      ImGui::CalcTextSize(full.c_str()).x + 18.0f;
+    for (const auto& [type, label] : quickButtons) {
+        fullWidth += buttonWidth(label);
+    }
+    const bool compact = fullWidth > ImGui::GetWindowWidth();
+
+    auto pushButtonColors = [](bool active) {
+        if (active) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.45f, 0.85f, 0.90f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.55f, 0.95f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -247,42 +293,57 @@ void ExampleManager::renderTopBar() {
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.30f, 0.35f, 0.70f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.75f, 0.80f, 1.0f));
         }
-
-        if (ImGui::SmallButton(label)) {
-            switchExample(type);
-        }
-
-        ImGui::PopStyleColor(3);
-        ImGui::SameLine();
     };
 
-    renderQuickButton(ExampleType::FluidSimulation, "Fluid");
-    renderQuickButton(ExampleType::FastMultipoleMethod, "FMM");
-    renderQuickButton(ExampleType::MolecularDynamics, "Molecular");
-    renderQuickButton(ExampleType::SpinningCube, "Cube");
-    renderQuickButton(ExampleType::RayTracing, "Raytracer");
+    if (compact) {
+        // One menu named after the current example, listing all of them plus reload.
+        if (ImGui::BeginMenu(std::format("{}###examples", getExampleName(currentType)).c_str())) {
+            for (const auto& [type, label] : quickButtons) {
+                if (ImGui::MenuItem(getExampleName(type).data(), nullptr, currentType == type)) {
+                    switchExample(type);
+                }
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Reload", "R")) {
+                reloadCurrent();
+            }
+            ImGui::EndMenu();
+        }
+    } else {
+        // Quick single-click buttons for immediate switching
+        for (const auto& [type, label] : quickButtons) {
+            pushButtonColors(currentType == type);
+            if (ImGui::SmallButton(label)) {
+                switchExample(type);
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+        }
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.20f, 0.22f, 0.50f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.80f, 0.35f, 0.15f, 0.80f));
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
-    if (ImGui::SmallButton("Reload (R)")) {
-        reloadCurrent();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.20f, 0.22f, 0.50f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.80f, 0.35f, 0.15f, 0.80f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
+        if (ImGui::SmallButton(reloadLabel)) {
+            reloadCurrent();
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::SameLine();
+    }
+
+    pushButtonColors(examples::controlsVisible);
+    if (ImGui::SmallButton(controlsLabel)) {
+        examples::controlsVisible = !examples::controlsVisible;
     }
     ImGui::PopStyleColor(3);
+    ImGui::SameLine();
 
-    // Right-aligned status and framerate
-    ImGuiIO& io  = ImGui::GetIO();
-    float    fps = io.Framerate;
-    float    ms  = (fps > 0.0f) ? (1000.0f / fps) : 0.0f;
-
-    std::string rightText = std::format("{} | {:.1f} FPS ({:.2f} ms)", getExampleName(currentType), fps, ms);
-    float       textWidth = ImGui::CalcTextSize(rightText.c_str()).x;
-    float       rightX    = ImGui::GetWindowWidth() - textWidth - 18.0f;
+    // Right-aligned status and framerate, shortened or dropped when there's no room.
+    const std::string& rightText = compact ? brief : full;
+    const float        rightX    = ImGui::GetWindowWidth() - ImGui::CalcTextSize(rightText.c_str()).x - 18.0f;
     if (rightX > ImGui::GetCursorPosX()) {
         ImGui::SetCursorPosX(rightX);
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s", rightText.c_str());
     }
-
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s", rightText.c_str());
 
     ImGui::EndMainMenuBar();
 }

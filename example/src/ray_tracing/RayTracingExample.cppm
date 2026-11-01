@@ -6,6 +6,7 @@ export module examples.ray_tracing;
 
 import std;
 
+import examples.ui;
 import shark;
 
 using namespace shark;
@@ -283,10 +284,9 @@ void RayTracingExample::onRender(Renderer&) {
     device->setVertexBuffer(0, *quadVbo);
     device->draw(6);
 
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(360, 480), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-    ImGui::Begin("Controls");
+    if (!examples::beginControls(ImVec2(360.0f, 480.0f))) {
+        return;
+    }
 
     ImGui::Text("Shiny Balls Settings");
     ImGui::SliderInt("Ball Count", &sphereCount, 1, MAX_SPHERES);

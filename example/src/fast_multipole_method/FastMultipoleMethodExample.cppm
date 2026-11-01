@@ -9,6 +9,7 @@ import std;
 import examples.fast_multipole_method.adaptive_fmm;
 import examples.fast_multipole_method.body;
 
+import examples.ui;
 import shark;
 
 using namespace shark;
@@ -216,10 +217,9 @@ void FastMultipoleMethodExample::onUpdate(float deltaTime) {
 }
 
 void FastMultipoleMethodExample::renderImGui() {
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(340, 340), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-    ImGui::Begin("Controls");
+    if (!examples::beginControls(ImVec2(340.0f, 340.0f))) {
+        return;
+    }
 
     ImGui::SliderInt("Particles", &uiParticleCount, 500, 100000);
     if (ImGui::IsItemDeactivatedAfterEdit() && std::cmp_not_equal(uiParticleCount, currentParticleCount)) {
