@@ -70,6 +70,16 @@
             }
             box.textContent += text + '\n';
         }
+        // iOS Safari has no Pointer Lock API, but Emscripten's GLFW calls it whenever
+        // the cursor mode changes (ImGui does that every frame), which throws and stops
+        // the main loop. Make the calls harmless no-ops where the API is missing.
+        if (!document.exitPointerLock) {
+            document.exitPointerLock = function () {};
+        }
+        if (!HTMLCanvasElement.prototype.requestPointerLock) {
+            HTMLCanvasElement.prototype.requestPointerLock = function () {};
+        }
+
         window.addEventListener('unhandledrejection', function (e) {
             var r = e.reason;
             showError('Unhandled promise rejection: ' + (r && (r.stack || r.message) || r));
