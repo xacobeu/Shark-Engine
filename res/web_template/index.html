@@ -31,14 +31,50 @@
             border: none;
             cursor: crosshair;
         }
+
+        /* On-screen error log, so failures are visible on phones without devtools. */
+        #errors {
+            display: none;
+            position: fixed;
+            inset: 0;
+            overflow: auto;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fca5a5;
+            font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+            user-select: text;
+            -webkit-user-select: text;
+        }
     </style>
 </head>
 
 <body>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="errors" title="Tap to close" onclick="this.style.display = 'none'"></div>
 
     <script type="text/javascript">
+        // Show errors on top of the canvas (first one also prints browser/environment info).
+        function showError(text) {
+            var box = document.getElementById('errors');
+            if (box.style.display !== 'block') {
+                box.style.display = 'block';
+                box.textContent = 'SharkEngine failed to start\n\n' +
+                    navigator.userAgent + '\n' +
+                    'crossOriginIsolated: ' + window.crossOriginIsolated +
+                    ', SharedArrayBuffer: ' + (typeof SharedArrayBuffer !== 'undefined') +
+                    ', cores: ' + navigator.hardwareConcurrency +
+                    ', WebGL2: ' + !!document.createElement('canvas').getContext('webgl2') + '\n\n';
+            }
+            box.textContent += text + '\n';
+        }
+        window.addEventListener('unhandledrejection', function (e) {
+            var r = e.reason;
+            showError('Unhandled promise rejection: ' + (r && (r.stack || r.message) || r));
+        });
+
         var Module = {
             preRun: [],
             postRun: [],
@@ -49,6 +85,11 @@
             printErr: function (text) {
                 if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                 console.error(text);
+                // stderr also carries harmless warnings; only surface what looks fatal.
+                if (/error|abort|exception|fail|out of memory|unreachable|not supported/i.test(text)) showError(text);
+            },
+            onAbort: function (what) {
+                showError('Aborted: ' + what);
             },
             canvas: (function () {
                 var canvas = document.getElementById('canvas');
@@ -67,8 +108,9 @@
         };
 
         Module.setStatus('Loading WebGL 2 Context...');
-        window.onerror = function (event) {
+        window.onerror = function (event, source, line, col, error) {
             console.error(event);
+            showError((error && error.stack) || (event + (source ? ' (' + source + ':' + line + ':' + col + ')' : '')));
         };
 
         let emrunExitSent = false;
