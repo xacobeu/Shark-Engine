@@ -285,6 +285,7 @@ void RayTracingExample::onRender(Renderer&) {
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360, 480), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
 
     ImGui::Text("Shiny Balls Settings");

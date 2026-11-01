@@ -218,6 +218,7 @@ void FastMultipoleMethodExample::onUpdate(float deltaTime) {
 void FastMultipoleMethodExample::renderImGui() {
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(340, 340), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
 
     ImGui::SliderInt("Particles", &uiParticleCount, 500, 100000);

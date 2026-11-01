@@ -357,6 +357,7 @@ void FluidSimulationExample::onUpdate(float deltaTime) {
 void FluidSimulationExample::renderImGui() {
     ImGui::SetNextWindowPos(ImVec2(10.0f, 28.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(340, 320), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
     ImGui::Begin("Controls");
 
     if (ImGui::SliderInt("Particles", &uiParticleCount, 500, 50000)) {
