@@ -284,33 +284,13 @@ void ExampleManager::renderTopBar() {
         return;
     }
 
-    static constexpr std::array<std::pair<ExampleType, const char*>, 5> quickButtons{{
-        {ExampleType::FluidSimulation, "Fluid"},
-        {ExampleType::FastMultipoleMethod, "FMM"},
-        {ExampleType::MolecularDynamics, "Molecular"},
-        {ExampleType::SpinningCube, "Cube"},
-        {ExampleType::RayTracing, "Raytracer"},
-    }};
-    static constexpr const char* reloadLabel   = "Reload (R)";
-    static constexpr const char* controlsLabel = "Controls";
-
-    const ImGuiStyle& style       = ImGui::GetStyle();
-    auto              buttonWidth = [&style](const char* label) {
-        return ImGui::CalcTextSize(label).x + (2.0f * style.FramePadding.x) + style.ItemSpacing.x;
-    };
+    const ImGuiStyle& style = ImGui::GetStyle();
 
     ImGuiIO&          io    = ImGui::GetIO();
     const float       fps   = io.Framerate;
     const float       ms    = (fps > 0.0f) ? (1000.0f / fps) : 0.0f;
-    const std::string full  = std::format("{} | {:.1f} FPS ({:.2f} ms)", getExampleName(currentType), fps, ms);
+    const std::string full  = std::format("{:.1f} FPS ({:.2f} ms)", fps, ms);
     const std::string brief = std::format("{:.0f} FPS", fps);
-
-    float fullWidth = ImGui::GetCursorPosX() + buttonWidth(reloadLabel) + buttonWidth("Controls     ") +
-                      ImGui::CalcTextSize(full.c_str()).x + 18.0f;
-    for (const auto& [type, label] : quickButtons) {
-        fullWidth += buttonWidth(label);
-    }
-    const bool compact = fullWidth > ImGui::GetWindowWidth();
 
     auto beginDropdown = [&style](std::string_view label, std::string_view id) {
         ImDrawList* barDrawList = ImGui::GetWindowDrawList();
@@ -329,39 +309,25 @@ void ExampleManager::renderTopBar() {
         return open;
     };
 
-    if (compact) {
-        if (beginDropdown(getExampleName(currentType), "examples")) {
-            for (const auto& [type, label] : quickButtons) {
-                if (ImGui::MenuItem(getExampleName(type).data(), nullptr, currentType == type)) {
-                    switchExample(type);
-                }
-            }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Reload", "R")) {
-                reloadCurrent();
-            }
-            ImGui::EndMenu();
-        }
-    } else {
-        // Quick single-click buttons for immediate switching
-        for (const auto& [type, label] : quickButtons) {
-            if (ImGui::SmallButton(label)) {
+    if (beginDropdown(getExampleName(currentType), "examples")) {
+        for (auto i = 0; i < std::to_underlying(ExampleType::Count); ++i) {
+            const auto type = static_cast<ExampleType>(i);
+            if (ImGui::MenuItem(getExampleName(type).data(), nullptr, currentType == type)) {
                 switchExample(type);
             }
-            ImGui::SameLine();
         }
-
-        if (ImGui::SmallButton(reloadLabel)) {
+        ImGui::Separator();
+        if (ImGui::MenuItem("Reload", "R")) {
             reloadCurrent();
         }
-        ImGui::SameLine();
+        ImGui::EndMenu();
     }
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowSizeConstraints(
         ImVec2(0.0f, 0.0f), ImVec2(viewport->Size.x - 20.0f, viewport->Size.y - ImGui::GetFrameHeight() - 10.0f)
     );
-    if (beginDropdown(controlsLabel, "controls")) {
+    if (beginDropdown("Controls", "controls")) {
         if (activeExample && activeExample->hasControls()) {
             ImGui::PushItemWidth(std::clamp(viewport->Size.x * 0.4f, 120.0f, 220.0f));
             activeExample->renderControls();
@@ -372,7 +338,8 @@ void ExampleManager::renderTopBar() {
         ImGui::EndMenu();
     }
 
-    const std::string& rightText = compact ? brief : full;
+    const float        fullX     = ImGui::GetWindowWidth() - ImGui::CalcTextSize(full.c_str()).x - 18.0f;
+    const std::string& rightText = (fullX > ImGui::GetCursorPosX()) ? full : brief;
     const float        rightX    = ImGui::GetWindowWidth() - ImGui::CalcTextSize(rightText.c_str()).x - 18.0f;
     if (rightX > ImGui::GetCursorPosX()) {
         ImGui::SetCursorPosX(rightX);
